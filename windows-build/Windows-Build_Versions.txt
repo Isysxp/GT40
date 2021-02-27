@@ -1,0 +1,11 @@
+::
+:: This file lists the versions of the various packages currently part 
+:: of simh windows-build dependency repository.  The files in this 
+:: repository are required to be proximate to the simh source when
+:: building simh simulators on Windows with Visual Studio 2008-2013 
+:: and MinGW.
+::
+PACKAGE LIBSDL          2.0.0
+PACKAGE WINPCAP         4.1.2
+PACKAGE PTHREADS        2.9.0
+PACKAGE PCRE            8.36

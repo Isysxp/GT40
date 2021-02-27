@@ -1,0 +1,28 @@
+#Ignore files built by Visual Studio
+*.obj
+*.dll
+*.lib
+*.exe
+*.pdb
+*.user
+*.aps
+*.pch
+*.vspscc
+*_i.c
+*_p.c
+*.ncb
+*.suo
+*.tlb
+*.tlh
+*.bak
+*.cache
+*.ilk
+*.log
+[Bb]in
+[Dd]ebug*/
+[Rr]elease*/
+# PCRE Intermedia Files
+testout8/
+testoutstudy8/
+pcre_chartables.c
+testsaved*

@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeLite_Project Name="GT40" InternalType="Console">
+  <Plugins>
+    <Plugin Name="qmake">
+      <![CDATA[00020001N0005Debug0000000000000001N0007Release000000000000]]>
+    </Plugin>
+    <Plugin Name="CMakePlugin">
+      <![CDATA[[{
+  "name": "Debug",
+  "enabled": false,
+  "buildDirectory": "build",
+  "sourceDirectory": "$(ProjectPath)",
+  "generator": "",
+  "buildType": "",
+  "arguments": [],
+  "parentProject": ""
+ }, {
+  "name": "Release",
+  "enabled": false,
+  "buildDirectory": "build",
+  "sourceDirectory": "$(ProjectPath)",
+  "generator": "",
+  "buildType": "",
+  "arguments": [],
+  "parentProject": ""
+ }]]]>
+    </Plugin>
+  </Plugins>
+  <Description/>
+  <Dependencies/>
+  <VirtualDirectory Name="src">
+    <File Name="scp.c"/>
+    <File Name="sim_card.c"/>
+    <File Name="sim_console.c"/>
+    <File Name="sim_disk.c"/>
+    <File Name="sim_ether.c"/>
+    <File Name="sim_fio.c"/>
+    <File Name="sim_frontpanel.c"/>
+    <File Name="sim_imd.c"/>
+    <File Name="sim_serial.c"/>
+    <File Name="sim_sock.c"/>
+    <File Name="sim_tape.c"/>
+    <File Name="sim_timer.c"/>
+    <File Name="sim_tmxr.c"/>
+    <File Name="sim_video_gt40.c"/>
+    <File Name="PDP11/pdp11_cis.c"/>
+    <File Name="PDP11/pdp11_cpu.c"/>
+    <File Name="PDP11/pdp11_cpumod.c"/>
+    <File Name="PDP11/pdp11_cr.c"/>
+    <File Name="PDP11/pdp11_dc.c"/>
+    <File Name="PDP11/pdp11_dl.c"/>
+    <File Name="PDP11/pdp11_dmc.c"/>
+    <File Name="PDP11/pdp11_dup.c"/>
+    <File Name="PDP11/pdp11_dz.c"/>
+    <File Name="PDP11/pdp11_fp.c"/>
+    <File Name="PDP11/pdp11_hk.c"/>
+    <File Name="PDP11/pdp11_io.c"/>
+    <File Name="PDP11/pdp11_io_lib.c"/>
+    <File Name="PDP11/pdp11_ke.c"/>
+    <File Name="PDP11/pdp11_kg.c"/>
+    <File Name="PDP11/pdp11_kmc.c"/>
+    <File Name="PDP11/pdp11_lk.c"/>
+    <File Name="PDP11/pdp11_lp.c"/>
+    <File Name="PDP11/pdp11_pclk.c"/>
+    <File Name="PDP11/pdp11_pt.c"/>
+    <File Name="PDP11/pdp11_rc.c"/>
+    <File Name="PDP11/pdp11_rf.c"/>
+    <File Name="PDP11/pdp11_rh.c"/>
+    <File Name="PDP11/pdp11_rk.c"/>
+    <File Name="PDP11/pdp11_rl.c"/>
+    <File Name="PDP11/pdp11_rp.c"/>
+    <File Name="PDP11/pdp11_rq.c"/>
+    <File Name="PDP11/pdp11_rs.c"/>
+    <File Name="PDP11/pdp11_rx.c"/>
+    <File Name="PDP11/pdp11_ry.c"/>
+    <File Name="PDP11/pdp11_stddev.c"/>
+    <File Name="PDP11/pdp11_sys.c"/>
+    <File Name="PDP11/pdp11_ta.c"/>
+    <File Name="PDP11/pdp11_tc.c"/>
+    <File Name="PDP11/pdp11_td.c"/>
+    <File Name="PDP11/pdp11_tm.c"/>
+    <File Name="PDP11/pdp11_tq.c"/>
+    <File Name="PDP11/pdp11_ts.c"/>
+    <File Name="PDP11/pdp11_tu.c"/>
+    <File Name="PDP11/pdp11_vh.c"/>
+    <File Name="PDP11/pdp11_vt.c"/>
+    <File Name="PDP11/pdp11_xq.c"/>
+    <File Name="PDP11/pdp11_xu.c"/>
+    <File Name="display/display.c"/>
+    <File Name="display/sim_ws.c"/>
+    <File Name="display/vt11.c"/>
+    <File Name="PDP11/pdp11_rom.c"/>
+  </VirtualDirectory>
+  <Settings Type="Executable">
+    <GlobalSettings>
+      <Compiler Options="" C_Options="" Assembler="">
+        <IncludePath Value="."/>
+      </Compiler>
+      <Linker Options="">
+        <LibraryPath Value="."/>
+      </Linker>
+      <ResourceCompiler Options=""/>
+    </GlobalSettings>
+    <Configuration Name="Debug" CompilerType="GCC" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="-O2;-Wall;-g" C_Options="-g;-O2;-std=gnu99 -U__STRICT_ANSI__;-DDONT_DO_LARGEFILE;-DUSE_READER_THREAD;-DSIM_ASYNCH_IO;-DHAVE_PCREPOSIX_H;-DHAVE_LIBPNG;-DHAVE_GLOB;-DHAVE_SLIRP_NETWORK;-DUSE_SIMH_SLIRP_DEBUG;-DUSE_DISPLAY;-DVM_PDP11;-DHAVE_LIBSDL;-DUSE_SIM_VIDEO;-DSDL_MAIN_AVAILABLE;-DHAVE_DLOPEN=so;" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0">
+        <IncludePath Value="."/>
+        <IncludePath Value="/opt/vc/include"/>
+        <IncludePath Value="/usr/include/SDL2"/>
+        <IncludePath Value="./REALCONS"/>
+        <Preprocessor Value="NDEBUG"/>
+      </Compiler>
+      <Linker Options="-L/opt/vc/lib -lSDL2 -lEGL -lGLESv2 -ljpeg  -lm -lrt -lpthread -lpcreposix -ldl -lpng -lX11 -lreadline" Required="yes"/>
+      <ResourceCompiler Options="" Required="no"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./Debug" Command="./$(ProjectName)" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
+        <![CDATA[]]>
+      </Environment>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="" IsExtended="no">
+        <DebuggerSearchPaths/>
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild/>
+      <PostBuild/>
+      <CustomBuild Enabled="no">
+        <RebuildCommand/>
+        <CleanCommand/>
+        <BuildCommand/>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory/>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+      <Completion EnableCpp11="no">
+        <ClangCmpFlagsC/>
+        <ClangCmpFlags/>
+        <ClangPP/>
+        <SearchPaths/>
+      </Completion>
+    </Configuration>
+    <Configuration Name="Release" CompilerType="GCC" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="-O2;-Wall" C_Options="-O2;-std=gnu99 -U__STRICT_ANSI__;-DDONT_DO_LARGEFILE;-DUSE_READER_THREAD;-DSIM_ASYNCH_IO;-DHAVE_PCREPOSIX_H;-DHAVE_LIBPNG;-DHAVE_GLOB;-DHAVE_SLIRP_NETWORK;-DUSE_SIMH_SLIRP_DEBUG;-DUSE_DISPLAY;-DVM_PDP11;-DHAVE_LIBSDL;-DUSE_SIM_VIDEO;-DSDL_MAIN_AVAILABLE;-DHAVE_DLOPEN=so;" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0">
+        <IncludePath Value="."/>
+        <IncludePath Value="/opt/vc/include"/>
+        <IncludePath Value="/usr/include/SDL2"/>
+        <IncludePath Value="./REALCONS"/>
+        <Preprocessor Value="NDEBUG"/>
+      </Compiler>
+      <Linker Options="-L/opt/vc/lib -lSDL2 -lEGL -lGLESv2 -ljpeg  -lm -lrt -lpthread -lpcreposix -ldl -lpng -lX11 -lreadline" Required="yes"/>
+      <ResourceCompiler Options="" Required="no"/>
+      <General OutputFile="./BIN/gt40" IntermediateDirectory="./BIN" Command="./Visual Studio Projects/gt40" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="./Visual Studio Projects" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
+        <![CDATA[]]>
+      </Environment>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="" IsExtended="no">
+        <DebuggerSearchPaths/>
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild/>
+      <PostBuild>
+        <Command Enabled="yes">cp ./BIN/gt40 "./Visual Studio Projects/gt40"</Command>
+      </PostBuild>
+      <CustomBuild Enabled="no">
+        <RebuildCommand/>
+        <CleanCommand/>
+        <BuildCommand/>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory/>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+      <Completion EnableCpp11="no">
+        <ClangCmpFlagsC/>
+        <ClangCmpFlags/>
+        <ClangPP/>
+        <SearchPaths/>
+      </Completion>
+    </Configuration>
+  </Settings>
+</CodeLite_Project>
