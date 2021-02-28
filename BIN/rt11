@@ -1,0 +1,24 @@
+set cpu 11/05
+set cpu 64k
+set dli enable
+set dli line=2
+set dli 8b
+set dlo 8b
+set dlo0 dataset
+SET RL0 RL02
+set rl1 rl02
+att rl0 rt11V.dsk
+att rk0 DEC-11-Graphics.dsk
+set dz disable
+set vt crt=vr14
+set vt scale=2
+set vt alias=on
+set vt enable
+set dli address=17775610
+att dli line=0,connect=%1
+set rom0 address=17766000
+at rom0 bootvt.img
+load vt07.bin
+;boot rl0
+;boot rom0
+;run 200

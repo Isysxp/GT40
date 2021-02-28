@@ -1,0 +1,23 @@
+set cpu 11/05
+set cpu u18
+set tti 8b
+set dz disable
+set lpt disable
+set rk disable
+set rl disable
+set hk disable
+set rx disable
+set rq disable
+set tm disable
+set tq disable
+;set dli vector=300
+set vt crt=vr14
+set vt scale=2
+set vt enable
+set dli line=2
+set dli enable
+set dli address=17775610
+set dlo0 7b
+att dli line=0,4000,connect=%1
+load Focal.bin
+run

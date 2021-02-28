@@ -1,0 +1,18 @@
+set cpu 11/05
+set cpu 32k
+set dli enable
+set dli line=2
+set dli 8b
+set dlo 8b
+set dlo0 dataset
+set dz disable
+set vt crt=vr14
+set vt scale=2
+set vt alias=on
+set vt enable
+set dli address=17775610
+att dli line=0,4000,connect=%1
+set rom0 address=17766000
+at rom0 bootvt.img
+load vt07.bin
+run 1000

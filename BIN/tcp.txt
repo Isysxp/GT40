@@ -1,0 +1,17 @@
+set cpu 11/34
+set dz disable
+set lpt disable
+set hk disable
+set rx disable
+set rq disable
+set tm disable
+set tq disable
+;set dli vector=300
+SET RL0 RL02
+att rl0 rt11V.dsk
+set vt crt=vr14
+set vt scale=2
+set vt enable
+att rk0 tcpipm.dsk
+boot rl0
+

@@ -1,0 +1,14 @@
+set cpu 11/05
+set cpu 16k
+set rl0 rl01
+att rk0 xxdp-3.dsk
+att rl0 xxdp8.img
+set dli enable
+set dli line=2
+set dz disable
+set vt crt=vr14
+set vt scale=2
+;set vs60 enable
+set vt enable
+;set vt vector=320
+boot rl0

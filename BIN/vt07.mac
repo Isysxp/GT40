@@ -1,0 +1,1519 @@
+
+
+.TITLE VT07 GT40 DATAPOINT EMULATOR
+;ALSO GENERAL PURPOSE GRAPHICS DISPLAY
+
+;PITTS JARVIS/JOE COHEN  --  AUGUST 1973
+
+;%ABSADR==1
+PCHIST=0
+PATL=0
+DEBUG=0
+DLIMSW=0
+
+;ASSEMBLE VERSION FOR GT40 OR 11/20?
+
+;.IF1
+;       .PRINT \0=>GT40 VERSION   1=>11/20 VERSION
+;DEBUG=\
+;       .TTYMAC FLAG
+;       DEBUG==FLAG
+;       .ENDM
+;       .IF NE DEBUG-1
+;               DEBUG==0        ;DEFAULT=0 (GT40 VERSION)
+;       .ENDC
+;
+;.ENDC
+;REGISTER ASSIGNMENTS
+
+A=%0                    ;USED FOR ARGUMENT PASSING
+B=%1
+C=%2
+T=%3
+TT=%4
+U=%5                    ;RESERVED FOR PIECE OF PAPER NUMBER
+SP=%6
+PC=%7
+
+;GEOMETRY
+
+BITPL==2000             ;BITS PER LINE
+NLINS==1400             ;LINES ON SCREEN
+BYTPL==BITPL/10         ;BYTES PER LINE
+WRDPL==BYTPL/2          ;WORDS PER LINE
+
+CHRWD==16               ;CHARACTER WIDTH
+CHRHT=30                ;CHARACTER HEIGHT
+CHRPL==BITPL/CHRWD      ;CHARACTERS PER LINE
+CHRLN==NLINS/CHRHT      ;CHARACTER LINES ON SCREEN
+
+;MEMORY MAP
+
+NXMPC=   4              ;BUS ERROR VECTOR
+NXMPSW=  6
+RESPC== 10              ;RESERVED INTRUCTION VECTOR
+RESPSW==12
+BPTPC== 14              ;BREAK POINT VECTOR
+BPTPSW==16
+IOTPC== 20              ;IOT VECTOR
+IOTPSW==22
+PWRPC=  24              ;POWER FAIL TRAP VECTOR
+PWRPS=  26
+EMTPC=  30              ;EMULATE TRAP VECTOR
+EMTPSW= 32
+TRPPC== 34              ;TRAP INSTRUCTION VECTOR
+TRPPSW==36
+TYIPC=  60              ;TTY INPUT INTERUPT VECTOR
+TYIPSW= 62
+LKPC=  100              ;LINE CLOCK INTERUPT VECTOR
+LKPSW= 102
+KLIPC= 300              ;KL11 INPUT INTERUPT VECTOR
+KLIPSW=302
+DSPC=  320              ;DISPLAY STOPPED INTERRUPT VECTOR
+DSPSW= 322
+DLPPC= 324              ;LIGHT PEN INTERRUPT VECTOR
+DLPPSW=326
+DTOPC= 330              ;DISPLAY TIME/SHIFT OUT VECTOR
+DTOPSW=332
+
+RUGBRK==37162           ;RUG BREAK POINTER HANDLER
+
+DPC= 172000             ;DISPLAY PROGRAM COUNTER
+DSR= 172002             ;DISPLAY STATUS REGISTER
+XSR= 172004             ;X STATUS REGISTER, GRAPH PLOT INCREMENT
+YSR= 172006             ;Y STATUS REGISTER, CHARACTER REGISTER
+KLIS=175610             ;KL11 INPUT STATUS
+KLIB=175612             ;KL11 INPUT BUFFER
+KLOS=175614             ;KL11 OUTPUT STATUS
+KLOB=175616             ;KL11 OUTPUT BUFFER
+TKS= 177560             ;TTY KEYBOARD STATUS
+TKB= 177562             ;TTY KEYBOARD BUFFER
+LKS= 177546             ;LINE CLOCK STATUS
+CSR= 177570             ;CONSOLE SWITCH REGISTER
+PS=  177776             ;PROCESSOR STATUS REGISTER
+
+;VARIOUS BUFFER SIZES AND ETC.
+
+BUFSIZ==1000            ;DL11 INPUT BUFFER SIZE
+LBL==CHRPL*2+6          ;WORST CASE LINE LINE LENGTH
+XTLBYT==6               ;EXTRA TEXT LINE BYTES
+PDL==400                ;PDL SIZE
+NEBISH==20              ;BYTES WE'RE WILLING TO WASTE IN FREE STORAGE ALLOCATOR
+INUSE==1                ;BLOCK IN USE
+DPYPDL==40              ;DPY PUSH DOWN LENGTH
+OPENSW=LINBUF+2         ;0 IMPLIES LINE CLOSED, NON-0 IMPLIES LINE OPEN
+.IF NE PCHIST
+PCS==90.                ;# PC'S TO SAVE
+PCL==4                  ;LENGTH OF EACH PC RECORD
+PCBFL==PCS*PCL          ;SIZE OF PC BUFFER
+.ENDC
+
+;GT40 OPCODES
+
+DPYJMP==160000
+DPYNOP==164000
+DPYSTP==173400          ;STOP DISPLAY AND CAUSE INTERRUPT
+DPYJSR==DPYSTP+1        ;CALL DPY SUBROUTINE
+DPYRTS==DPYSTP+2        ;RETURN FROM DPY SUBROUTINE
+DPYJSI==DPYSTP+3        ;INDIRECT CALL DPY SUBROUTINE
+SETPNT==114000
+RPOINT==130000
+SVW==104000
+LVW==110000
+CHARS==100000
+DPYNRM==3724            ;NORMAL SET GRAPHIC MODE BITS
+                        ;       INTENSITY 7
+;       NO LIGHT PEN
+;       NO BLINK
+;       NO ITALICS
+;       SOLID LINE
+BLENAB==20              ;       LISTEN TO DBLINK BIT
+DBLINK==10              ;       YES BLINK (IF ENABLED)
+
+STSNRM=171640           ;NORMAL A REGISTER SETTINGS
+                        ;       ENABLE STOP INTERRUPTS
+                        ;       DISABLE LIGHT PEN INTERRUPTS
+SYNC==4                 ;       SYNCS DPU WITH CLOCK
+ITALICS==20             ;       CAUSE ITALICS
+LITEPN==200             ;       ENABLE LIGHT PEN INTERRUPTS
+
+ESCHR==20               ;ESCAPE TO DISPLAY SLAVE (^P)
+XLOD==6                 ;EXTRA BYTES IN LOADER BLOCK (TYPE, SIZE, ITEM)
+
+.MACRO  PUSH A
+.NLIST
+MOV     A,-(SP)
+        .LIST
+.ENDM
+
+.MACRO  POP A
+.NLIST
+MOV     (SP)+,A
+        .LIST
+.ENDM
+	.ASECT
+	.=400+PDL
+
+GO:     RESET                   ;IN THE PRIVACY OF YOUR OWN HOME
+        CLR     PS
+;       MOV     VERSE,0
+        MOV     #GO,SP          ;SET UP PUSH DOWN POINTER
+        MOV     #KLIBRK,KLIPC   ;SET UP INTERRUPT VECTORS
+;       MOV     #5_5,KLIPSW
+        MOV     #240,KLIPSW
+        MOV     #CLKBRK,LKPC
+;       MOV     #6_5,LKPSW
+        MOV     #300,LKPSW
+;       MOV     #<7_5>,A        ;ALL PROCESSOR TRAPS GO ON 7
+        MOV     #340,A
+        MOV     #NXMPC,B
+        MOV     #NXMFND,(B)+    ;BUS TIME OUT
+        MOV     A,(B)+
+        MOV     #RESBRK,(B)+    ;RESERVED INSTRUCTION
+        MOV     A,(B)+
+        MOV     #RUGBRK,(B)+    ;BREAK POINT
+        MOV     A,(B)+
+        MOV     #IOTBRK,(B)+    ;IOT TRAP
+        MOV     A,(B)+
+        MOV     #POWERF,(B)+    ;POWER FAILURE
+        MOV     A,(B)+
+        MOV     #EMTBRK,(B)+    ;EMT
+;       MOV     #4_5,A
+        MOV     #200,A
+        MOV     A,(B)+          ;PUT EMT ON DISPLAY LEVEL
+        MOV     #TRPBRK,(B)+    ;"TRAP" TRAP
+;       MOV     #<7_5>,(B)+
+        MOV     #340,(B)+
+        MOV     #TYIBRK,TYIPC
+        MOV     A,TYIPSW
+        MOV     #DSPC,B
+        MOV     #DSBRK,(B)+
+        MOV     A,(B)+
+        MOV     #LPBRK,(B)+
+        MOV     A,(B)+
+        MOV     #DTOBRK,(B)+
+        MOV     A,(B)+
+        CLR     ACTCHR
+        MOV     #BUF,GETCC      ;DL11 INPUT VECTOR
+        MOV     #BUF,PUTCC
+        MOV     #37000,TT
+        MOV     TT,MEMTOP
+        MOV     #FS,T
+        JSR     PC,CLRL3        ;CLEAR ALL OF MEMORY, FIRST NXM STOPS IT
+.IF NE DEBUG
+	   JSR     PC,DEBST        ;DO ASSORTED HACKING (RE INTERRUPT VECTORS, ETC!.)
+.ENDC
+   	   MOV     #NXMBRK,NXMPC   ;ALL FUTHER BUS ERRORS WILL HALT
+        MOV     MEMTOP,T
+        MOV     #-1,-(T)        ;EVERYTHING ABOVE FREE STORAGE RESERVED
+        MOV     T,MEMTOP        ;SET UP FREE STORAGE
+        MOV     #FAKEBL+2,T
+        MOV     T,AVAIL
+        MOV     T,ROVER
+        MOV     #FS+2,TT        ;SET UP FAKE BLOCK
+        CLR     -2(T)           ;SIZE 0
+        MOV     TT,(T)          ;FAKEBL FD PNTR
+        MOV     TT,2(T)         ;BACK PNTR
+        MOV     #-1,4(T)        ;LOOKS TAKEN FROM ABOVE
+        MOV     T,(TT)          ;FD PNTR IN FS
+        MOV     T,2(TT)         ;BACK PNTR IN FS
+        MOV     MEMTOP,A
+        SUB     #FS,A           ;SIZE OF FREE STORAGE (LEAVE 1 WD FOR -1)
+        MOV     A,-(TT)
+        CLR     RETLAD
+        CLR     TXSTRT
+        CLR     GRSTRT
+        MOV     #DPYRTS,GRJMP
+        MOV     #LOWLIN+TXTIDX,T        ;INITIALIZE TEXT RING
+GO2:    CLR     (T)+
+        MOV     #DPYJMP,(T)
+        ADD     #LHDRS-2,T
+        CMP     T,#HILIN+TXTIDX
+        BLO     GO2
+        CLR     (T)+
+        MOV     #DPYRTS,(T)
+        MOV     #-DPYPDL/2,DPYPDC       ;SET UP DPY PUSH DOWN LIST
+        MOV     #DPYPDB+DPYPDL,DPYPDP
+        CLR     CPOS                    ;SET SCREEN VARIABLES
+        CLR     CLINE
+        MOV     #NLINS-CHRHT+1,CURSY    ;CURSOR Y
+        CLR     BYTCNT
+        JSR     PC,HU
+        JSR     PC,CLRLIN
+        MOV     #LOWLIN,TXSTRT
+        MOV     #<LOWLIN+TXTIDX>,TEXTP
+        CLR     CASE
+        CLR     NOGLIT
+        MOV     #100,A
+        MOV     A,TKS                   ;ENABLE INTERUPTS
+        MOV     A,@AKLIS
+.IF NE PCHIST
+	   MOV     #PCBUF,PCPNT
+.ENDC
+.IF NE DLIMSW                            ;CLOCK NEEDED ONLY FOR DISPLAY LIMITING
+        MOV     A,LKS
+        CLR     DSTOPD
+        CLR     DTIME
+        CLR     TICKS
+.ENDC
+	   MOV     #DPYSA,@ADPC            ;START THE DISPLAY
+GO1:    MOV     CURSX,RCURSX
+        MOV     CURSY,RCURSY
+        JSR     PC,GETCHW               ;WAIT FOR CHARACTER
+        CMP     A,#177
+        BEQ     GO1                     ;IGNORE RUBOUTS
+        CMP     A,#ESCHR
+        BEQ     ESCAPE
+        JSR     PC,ADDCHR
+        BR      GO1
+
+ESCAPE: JSR     PC,CMND         ;PROCESS DISPLAY SLAVE COMMAND
+        BR      GO1
+;INTERRUPT ROUTINES
+
+EMTBRK: TST     DSTOPD
+        BNE     EMTRET  ;IF DISPLAY IS RUNNING, GO AWAY
+        JSR     U,ACSAV
+        JSR     PC,RETST        ;SEE IF WE SHOULD RETURN A LINE
+        JSR     U,ACRES
+EMTRET: RTI
+
+RETST1: JSR     PC,RETBLK
+RETST:  MOV     RETLAD,A
+        BNE     RETST1
+        RTS     PC
+
+;DISPLAY INTERRUPT ROUTINES
+
+LPBRK:  JSR     PC,DPYSAV
+        BPT                     ;LIGHT PEN
+
+DTOBRK: JSR     PC,DPYSAV
+        BPT                     ;TIMEOUT/SHIFTOUT
+
+DSBRK:  JSR     U,ACSAV
+        JSR     PC,DPYSAV
+        CMP     OCSR,CSR
+        BEQ     DSBRK1
+        MOV     CSR,OCSR
+        MOV     #1,A            ;BLINK
+        MOV     #DBLINK,B
+        MOV     #DPYSPT,C
+        JSR     PC,SETDPY
+        ASL     A               ;ITALICS
+        MOV     #ITALICS,B
+        MOV     #DPYSA,C
+        JSR     PC,SETDPY
+DSBRK1: JSR     PC,RETST        ;SEE IF WE SHOULD FREE BLOCKS
+        MOV     @ADPC,A
+        MOV     -2(A),B         ;HALT INSTRUCTION
+        BIC     #3,B
+        CMP     B,#DPYSTP
+        BNE     DSBERR          ;ITS NOT A HALT!!!
+        MOV     -2(A),B
+        BIC     #177774,B
+        BEQ     DSBERR
+        DEC     B
+        BEQ     AJSR
+        DEC     B
+        BEQ     ARTS
+        DEC     B
+        BEQ     AJSI
+DSBERR: TST     FORGIV          ;TO ERR IS HUMAN (PROBABLY A TIMING SCREW)
+        BNE     DSRET           ;TO FORGIVE, DIVINE
+        BPT                     ;ILLEGAL INSTRUCTION
+
+;DISPLAY INTERRUPT CONTINUED
+
+AJSR:   TST     (A)+
+        BEQ     DSRET           ;DPYJSR 0 IS A NOOP
+        JSR     PC,AJPUSH
+        MOV     -(A),A          ;JSR DESTINATION
+        BR      DSRET
+
+AJSI:   TST     (A)
+        BEQ     DSRET           ;DPYJSI 0 IS NOOP
+        TST     @(A)+           ;DPYJSI @0 IS ALSO NOOP
+        BEQ     DSRET
+        JSR     PC,AJPUSH
+        MOV     @-(A),A
+        BR      DSRET
+
+AJPUSH: INC     DPYPDC
+        BLE     .+4
+        NOP                     ;DISPLAY OVERPUSH
+        SUB     #2,DPYPDP
+        MOV     A,@DPYPDP
+        RTS     PC
+
+ARTS:   DEC     DPYPDC
+        MOV     @DPYPDP,A
+        ADD     #2,DPYPDP
+DSRET:
+.IF NE DLIMSW
+	   CMP     A,#TXSTRT+2
+        BNE     DSTART
+        TST     DTIME           ;READY TO DISPLAY TEXT
+        BEQ     DLIMIT          ;BR IF IT TOOK<CLOCK TICK TO SHOW ALL LISTS
+DRSTRT: CLR     DTIME
+.ENDC
+DSTART: MOV     A,@ADPC         ;RESTART THE DISPLAY
+DEXIT:  JSR     U,ACRES
+        RTI
+
+.IF NE DLIMSW
+DLIMIT: MOV     A,DSTOPD        ;SAVE DPC & SET FLAG
+        BR      DEXIT
+.ENDC
+
+SETDPY: BIT     A,OCSR
+        BNE     SETDP1
+        BIC     B,(C)
+        RTS     PC
+SETDP1: BIS     B,(C)
+        RTS     PC
+;MORE INTERUPT ROUTINES
+
+CLKBRK:
+.IF EQ DLIMSW
+	   BPT                     ;CLOCK INTERRUPTS NOT ENABLED
+        RTI
+.ENDC
+.IF NE PCHIST
+CMP     PCPNT,#<PCBUF+PCBFL>
+        BLO     .+10
+        MOV     #PCBUF,PCPNT
+        MOV     (SP),@PCPNT
+        ADD     #2,PCPNT
+        MOV     2(SP),@PCPNT
+        ADD     #2,PCPNT
+.ENDC
+.IF NE DLIMSW
+INC     TICKS
+        TST     DSTOPD
+        BNE     CLKDS           ;BR IF DISPLAY STOPPPED
+        INC     DTIME
+        RTI
+
+CLKDS:  JSR     U,ACSAV
+        MOV     DSTOPD,A        ;WHERE TO RESTART DISPLAY
+        CLR     DSTOPD
+        BR      DRSTRT          ;RESTART DISPLAY
+.ENDC
+
+TYIBRK: TSTB    @AKLOS
+        BEQ     TYIBRK
+        MOVB    TKB,@AKLOB
+        RTI                     ;WHAT COULD BE EASIER
+
+KLIBRK: PUSH    A
+        MOV     @AKLIB,A        ;GET THAT CHARACTER
+        BGE     .+4
+        NOP                     ;DL11 HARDWARE ERROR
+        BIC     #177600,A
+.IF NE DEBUG
+	   MOVB    A,177566        ;ECHO ON CONSOLE
+.ENDC
+   CMP     ACTCHR,#BUFSIZ
+        BGE     KLIER
+        INC     ACTCHR
+        MOVB    A,@PUTCC
+        INC     PUTCC
+        CMP     PUTCC,#BUFEND
+        BLO     KLIRET
+        MOV     #BUF,PUTCC
+KLIRET: POP     A
+        RTI
+
+KLIER:  NOP                     ;BUFFER OVERFLOWED
+        BR      KLIRET
+
+NXMFND: PUSH    MEMTOP
+        SUB     #2,T            ;REGISTER HAS ALREADY BEEN INCREMENTED
+        MOV     T,MEMTOP
+        POP     T
+        RTI
+
+POWERF: JSR     U,ACSAV
+        MOV     #POWERU,PWRPC
+        MOV     SP,SAVSP
+        HALT
+POWERU: RESET
+;        MOV     #<7_5>,PS
+        MOV     #340,PS
+        MOV     SAVSP,SP
+        MOV     #100,A          ;RENABLE ALL INTERRUPTS
+        MOV     A,TKS
+        MOV     A,@AKLIS
+.IF NE DLIMSW
+	   MOV     A,LKS
+        CLR     DSTOPD
+        CLR     DTIME
+.ENDC
+   	   MOV     #DPYSA,@ADPC
+        JSR     U,ACRES
+        RTI
+
+;VARIAOUS PROCESSOR ERRORS COME HERE
+
+NXMBRK: BPT
+        RTI
+
+TRPBRK: BPT
+        RTI
+
+RESBRK: BPT
+        RTI
+
+IOTBRK: BPT
+RTI
+;SOME LOW LEVEL ROUTINES
+
+GETCHW: TST     ACTCHR
+        BGT     GETCHR
+        WAIT
+	   BR      GETCHW
+GETCHR: DEC     ACTCHR
+        MOVB    @GETCC,A
+        INC     GETCC
+        CMP     GETCC,#BUFEND
+        BLO     GETC1
+        MOV     #BUF,GETCC
+GETC1:  BIC     #177600,A
+        RTS     PC
+
+;HERE TO PUT CHARACTER ON SCREEN
+
+ADDCHR: CMP     A,#40
+        BLT     FORMAT          ;CONTROL CHARACTER
+        CMP     CPOS,#CHRPL
+        BGE     RTSPC1          ;IGNORE OVERFLOW
+PUTCHR: TST     OPENSW
+        BNE     PUTCH1
+        JSR     PC,OPNLIN       ;OPEN UP THIS LINE
+PUTCH1: CMP     CPOS,BYTCNT
+        BLT     PUTCH2
+        MOV     CPOS,BYTCNT     ;IN CASE WE LINE FED OR MOVED UP FROM FULL LINE!TO NEARLY EMPTY ONE
+PUTCH6: INC     BYTCNT
+PUTCH2: MOVB    A,@LINPNT
+PUTCH3: INC     LINPNT
+        INC     CPOS
+        ADD     #CHRWD,CURSX
+RTSPC1: RTS     PC
+
+;HERE FOR CONTROL CHARACTER
+
+FORMAT: CMP     A,#40
+        BHIS    FORMA1          ;NOT A CONTROL CHARACTER
+        ASL     A
+        JMP     @DPTAB(A)
+
+BELL:   CLR     DSR             ;TRYING TO WRITE DSR CAUSES BEEP
+FORMA1: RTS     PC
+
+BS:     TST     CPOS
+        BEQ     CRTSPC
+        CMP     LINPNT,#OPENSW
+        BLOS    BS1             ;LINE NOT OPEN
+        DEC     LINPNT
+BS1:    DEC     CPOS
+        SUB     #CHRWD,CURSX
+        RTS     PC
+
+TAB:    CMP     CPOS,#CHRPL
+        BGE     CRTSPC
+        MOV     #40,A           ;AT LEAST ONE SPACE
+        JSR     PC,ADDCHR
+        BIT     #7,CPOS
+        BNE     TAB
+        RTS     PC
+
+CR:     CLR     CPOS
+        CLR     CURSX
+        MOV     #OPENSW,LINPNT
+        RTS     PC
+
+CFS:    CMP     CPOS,#CHRPL     ;FORWARD SPACE
+        BGE     CRTSPC
+        BR      PUTCH3
+
+LF:     TST     @TEXTP
+        BEQ     LF1             ;LINE DIDN'T EXIST (YET)
+        TST     OPENSW
+        BEQ     LF2             ;LINE NEVER OPENED
+LF1:    JSR     PC,CLSLIN       ;CLOSE THE LINE
+LF2:    MOV     TEXTP,A
+        MOV     NXTIDX-TXTIDX(A),A
+        ADD     #TXTIDX,A
+        MOV     A,TEXTP
+        INC     CLINE
+        SUB     #CHRHT,CURSY
+        CMP     CLINE,#CHRLN-1
+        BLE     CRTSPC          ;NO GLITCH NECESSARY, FREE LINES AT BOTTOM
+        MOV     LNSPGL,C        ;NUMBER LINES TO GLITCH
+GLITLP: JSR     PC,GLITCH       ;GLITCH ONE LINE
+        DEC     C
+        BGT     GLITLP
+CRTSPC: RTS     PC
+
+;HERE TO GLITCH ONE LINE, RETIRES LINE AT TOP OF SCREEN
+
+GLITCH: TST     NOGLIT
+        BNE     CRTSPC
+        MOV     TXSTRT,B                ;HEAD OF TEXT RING
+        MOV     TXTIDX(B),A             ;POINTS TO TEXT LINE
+        BEQ     GLIT1                   ;POINTS AT NOTHING
+        CLR     TXTIDX(B)               ;POOF
+        JSR     PC,RETLIN               ;FLUSH LINE AT INTERRUPT LEVEL
+GLIT1:  MOV     BACIDX(B),A             ;POINTS TO BOTTOM LINE OF SCREEN
+        MOV     #DPYJMP,JMPIDX(A)       ;CLOBBER DPYRTS THAT WAS THERE
+        MOV     #DPYRTS,JMPIDX(B)       ;CLOBBER DPYJMP
+        MOV     NXTIDX(B),TXSTRT        ;START TEXT AT NEXT LINE
+        DEC     CLINE
+        ADD     #CHRHT,CURSY
+        RTS     PC
+
+DPTAB:  FORMA1  ;^@ 00
+        FORMA1  ;^A 01
+        FORMA1  ;^B 02
+        FORMA1  ;^C 03
+        FORMA1  ;^D 04
+        FORMA1  ;^E 05
+        FORMA1  ;^F 06
+        BELL    ;^G 07
+        BS      ;^H 10
+        TAB     ;^I 11
+        LF      ;^J 12
+        FORMA1  ;^K 13
+        FORMA1  ; 14
+        CR      ;^M 15
+        FORMA1  ;^N 16
+        FORMA1  ;^O 17
+        FORMA1  ;^P 20
+        FORMA1  ;^Q 21
+        FORMA1  ;^R 22
+        FORMA1  ;^S 23
+        FORMA1  ;^T 24
+        FORMA1  ;^U 25
+        FORMA1  ;^V 26
+        FORMA1  ;^W 27
+        CFS     ;^X 30 FORWARD SPACE
+        FORMA1  ;^Y 31
+        MU      ;^Z 32 MOVE UP
+        FORMA1  ;^[ 33
+        HD      ;^\ 34 HOME DOWN
+        HU      ;^] 35 HOME UP
+        CLEOL   ;^^ 36 CLEAR TO END OF LINE
+        CLEOF   ;^_ 37 CLEAR TO END OF FILE
+
+HD:     JSR     PC,CR
+        MOV     #-1,NOGLIT
+HD1:    CMP     CLINE,#CHRLN-1
+        BGE     HD2
+        JSR     PC,LF
+        BR      HD1
+HD2:    CLR     NOGLIT
+        RTS     PC
+
+MU:     TST     CLINE           ;MOVE UP
+        BEQ     CRTSPC          ;ALREADY AT TOP LINE
+        TST     @TEXTP
+        BEQ     MU0             ;IF LINE DIDN'T EXIST, INVENT CRLF
+        TST     OPENSW
+        BEQ     MU1             ;BR IF NO LINE OPEN
+MU0:    JSR     PC,CLSLIN
+MU1:    DEC     CLINE
+        ADD     #CHRHT,CURSY
+        MOV     TEXTP,A
+        SUB     #TXTIDX,A
+        MOV     BACIDX(A),A
+        ADD     #TXTIDX,A
+        MOV     A,TEXTP
+        RTS     PC
+
+HU:     JSR     PC,CR           ;HOME UP
+HU1:    TST     CLINE
+        BEQ     CRTSPC
+        JSR     PC,MU
+        BR      HU1
+
+CLEOL:  TST     @TEXTP
+        BEQ     CLEOL2          ;LET MU OR LF WORRY ABOUT LINE WHICH NEVER
+    	   TST     OPENSW
+        BNE     .+6
+        JSR     PC,OPNLIN       ;OPEN IT SO WE CAN FREE WHERE IT POINTED
+        BIT     #1,CPOS
+        BEQ     CLEOL1
+        MOVB    #' ,@LINPNT
+CLEOL1: MOV     CPOS,BYTCNT
+        JSR     PC,CLSLIN
+CLEOL2: RTS     PC
+
+CLEOF:  PUSH    CPOS
+        PUSH    CLINE
+        PUSH    CURSX
+        PUSH    CURSY
+        PUSH    TEXTP
+        PUSH    LINPNT
+        JSR     PC,CLEOL        ;CLEAR THE LINE THAT'S THERE
+        MOV     #CHRLN-1,B
+        SUB     CLINE,B         ;# LINES TO CLEAR
+        PUSH    B
+        BLE     CLEOF3          ;GOOD BYE
+        JSR     PC,HD
+        MOV     #-1,NOGLIT      ;DON'T WANT GLITCHING
+CLEOF1: MOV     @TEXTP,A
+        BEQ     CLEOF2          ;NO TEXT ON THAT LINE
+        CLR     @TEXTP
+        JSR     PC,RETLIN
+CLEOF2: JSR     PC,MU1
+        DEC     (SP)
+        BGT     CLEOF1
+CLEOF3: MOV     #GRJSR-HJSIDX,TT        ;FLUSH THE GRAPHICS AS WELL
+        MOV     GRSTRT,T
+        BEQ     CLEOF4
+        JSR     PC,DITEM2
+        BR      CLEOF3
+CLEOF4: POP     B
+        CLR     NOGLIT
+        POP     LINPNT
+        POP     TEXTP
+        POP     CURSY
+        POP     CURSX
+        POP     CLINE
+        POP     CPOS
+        RTS     PC
+;HERE TO CLOSE A LINE
+
+CLSLIN: MOV     BYTCNT,A
+        JSR     PC,EVENUP
+        MOV     A,B
+CLSL4:  ADD     #XTLBYT,B       ;SIZE OF BUFFER DESIRED (INCLUDE CHARS,CRLF,DPY!RTS)
+        MOV     B,A
+        JSR     PC,GETBLK
+        MOV     #CHARS,(A)
+        ADD     A,B
+        MOV     #DPYRTS,-(B)
+;       MOV     #<<15_10>+12>,-(B)
+        MOV     #6412,-(B)
+        MOV     BYTCNT,B
+        BEQ     CLSL2           ;EMPTY LINE
+        MOV     A,TT
+        MOV     #LINBUF,T
+        MOV     (T)+,(TT)+
+        ASR     B
+        ADC     B               ;WORD COUNT
+CLSL1:  MOV     (T)+,(TT)+
+        DEC     B
+        BGT     CLSL1
+CLSL2:  MOV     A,@TEXTP
+CLRLIN: CLR     BYTCNT
+        MOV     #LINBUF+LBL-4,T ;DON'T CLEAR CRLF OR DPYRTS
+        MOV     #LINBUF,TT      ;OR THE CHARS EITHER
+CLRL1:  CLR     -(T)
+        CMP     T,TT
+        BHI     CLRL1
+        RTS     PC
+
+CLRL3:  CLR     (T)+
+        CMP     T,TT
+        BLO     CLRL3
+        RTS     PC
+
+;OPENS CURRENT LINE, COPIES CURRENT LINE INTO LINBUF
+;       AND RETURNS LINE BUFFER TO FREE STORAGE
+
+OPNLIN: PUSH    A
+        PUSH    CPOS
+        PUSH    CURSX
+        PUSH    LINPNT
+        MOV     @TEXTP,T
+        BEQ     OPNL4           ;NO TEXT ON LINE
+        MOV     #LINBUF,TT
+        MOV     (T)+,(TT)+      ;SHOULD BE CHARS
+OPNL00: MOV     (T)+,(TT)+
+        BGE     .-2             ;UGH! THIS WORKS ONLY BECAUSE DPYRTS
+                                ;HAS 100000 BIT ON, AND CHARS DON'T.
+        CMP     -(TT),-(TT)     ;DPYRTS AND CRLF
+        MOV     TT,LINPNT
+        SUB     #LINBUF+2,TT    ;NUMBER OF BYTES IN LINE
+        MOV     TT,BYTCNT
+OPNL01: MOV     #DPYRTS,LINBUF+LBL-2
+;        MOV     #<<15_10>+12>,LINBUF+LBL-4
+        MOV     #6412,LINBUF+LBL-4
+        MOV     #CHARS,LINBUF
+        MOV     BYTCNT,CPOS
+        MOV     #' ,A           ;PAD OUT LINE WITH SPACES
+        BR      .+6
+OPNL1:  JSR     PC,PUTCH2
+        CMP     LINPNT,#LINBUF+LBL-4
+        BLO     OPNL1
+OPNL2:  MOV     @TEXTP,A
+        BEQ     OPNL3           ;NO LINE TO RETURN
+        MOV     #FAKEL,@TEXTP
+        JSR     PC,RETLIN       ;RETURN LINE AT INTERUPT LEVEL
+OPNL3:  MOV     #LINBUF,@TEXTP
+        POP     LINPNT
+        POP     CURSX
+        POP     CPOS
+        POP     A
+        RTS     PC
+
+;HERE FOR NO TEXT ON OPEN LINE
+
+OPNL4:  MOV     #LINBUF+2,LINPNT
+        CLR     BYTCNT
+        MOV     #CHARS,LINBUF
+        BR      OPNL01
+;DISPLAY SLAVE COMMAND PROCESSOR
+
+CMND:   JSR     PC,GETCHW       ;GET COMMAND
+        CMP     A,#CMTBLL/2
+        BHIS    RTSPC3          ;NOT A COMMAND IGNORE
+        MOV     A,COMAND        ;FOR DEBUGGING
+        CLR     CKS
+        CLR     C               ;ONE LESS THAN # OF WORDS WE EXPECT
+        ASL     A
+        JMP     @CMTBL(A)       ;DISPACH
+
+;COMMAND DISPATCH TABLE
+CMTBL:  LODERS                  ;LOAD A LIST AND SHOW IT
+        LODER                   ;JUST LOAD IT
+        DITEM                   ;DELETE AN ITEM
+        GO                      ;RESTART WORLD
+        SITEM                   ;SHOW AND ITEM
+        EITEM                   ;ERASE AN ITEM
+        CITEM                   ;COPY AN ITEM
+        MITEM                   ;MOVE ITEM
+        CMITEM                  ;CHANGE THE SET GRAPHICS MODE OF ITEM
+        ADITEM                  ;ADD TO AN ITEM
+        SBRITM                  ;SUBROUTINIZE AN ITEM
+        USBITM                  ;UNSUBROUTINIZE AN ITEM
+
+CMTBLL==.-CMTBL
+
+;DRAWING PROGRAM STYLE COMMANDS
+
+;HERE TO LOAD DISPLAY ITEM AND SHOW IT
+LODERS: MOV     #<XLOD+2>,C     ;COUNT
+        JSR     PC,GETWRD
+        CMP     A,#2
+        BEQ     LODER2
+        CMP     A,#1
+        BNE     RTSPC3
+        JSR     PC,LODER        ;LOAD ITEM
+RTSPC3: RTS     PC
+
+
+;HERE TO DELETE AN ITEM FROM OVER COMMUNICATION LINK
+
+LODER2: JSR     PC,GETWRD
+        MOV     A,C
+        SUB     #<XLOD-2>,C
+LOD2A:  JSR     PC,DITEM
+        TST     C
+        BGT     LOD2A
+        JSR     PC,LODEND
+        RTS     PC
+
+GETCNT: JSR     PC,GETWRD       ;SIZE OF BLOCK
+        MOV     A,C
+        MOV     A,COUNT         ;FOR DEBUGGING
+        ADD     #<XITEM-XLOD>,A ;BYTES OF CORE WE WANT
+        SUB     #<XLOD-2>,C     ;WE'VE ONLY 2 LEFT TO READ
+        RTS     PC
+
+GTAIB2: JSR     PC,GTAIB        ;DO GTAIB TWICE
+;GET WORD AND INSERT AT (B)+
+GTAIB:  JSR     PC,GETWRD
+        MOV     A,(B)+
+        RTS     PC
+
+;HERE TO READ A WORD IN LODER FORMAT
+GETWRD: JSR     PC,GETCHW       ;6 BITS
+        PUSH    A
+        JSR     PC,GETCHW       ;4 BITS
+        SWAB    A
+        ASR     A
+        ASR     A
+        ADD     A,(SP)
+        MOVB    (SP),A
+;       BIC     #<377_10>,A
+        BIC     #177400,A
+        ADD     A,CKS
+        DEC     C
+        JSR     PC,GETCHW       ;LAST 6 BITS
+        SWAB    A
+        ASL     A
+        ASL     A
+        ADD     A,(SP)
+        DEC     C
+        BLT     POPAJ           ;ONLY 8 BITS OF CHECK SUM
+        MOVB    1(SP),A
+;       BIC     #<377_10>,A
+        BIC     #177400,A
+        ADD     A,CKS
+POPAJ:  POP     A
+        RTS     PC
+
+;SOME SBRS USED BY ALL STYLE COMMANDS
+;GET ITEM AND FIND IT
+;CALL WITH ITEM # IN A
+;RETURN WITH ITEM # IN A, & IF FOUND, Z BIT CLEARED, & ITEM ADDR IN T
+GFITEM: JSR     PC,GETWRD
+FHEDR:  MOV     #GRSTRT-HNXIDX,TT
+        BR      FHEDR2
+FHEDR1: MOV     T,TT
+FHEDR2: MOV     HNXIDX(TT),T
+        BEQ     RTSPC4          ;BR IF ITEM DOESN'T EXIST
+        CMP     A,HITIDX(T)
+        BNE     FHEDR1
+        CLZ                     ;FOUND IT, CLR Z BIT
+RTSPC4: RTS     PC
+
+;CREATE A HEADR, CALL WITH ITEM # IN A
+;INSERT INTO DISPLAY RING &RETURN WITH HEADR ADDR IN T
+CHEDR:  JSR     PC,FHEDR
+        BNE     DELIS1          ;ALREADY EXISTS
+        PUSH    A
+        MOV     #HSIZE,A
+        JSR     PC,GETBLK       ;GET A NEW HEADER BLOCK
+        MOV     A,T
+        POP     A
+        PUSH    T
+        MOV     #DPYNOP,(T)+    ;SETPNT
+        MOV     #DPYNOP,(T)+    ;X
+        MOV     #DPYNOP,(T)+    ;Y
+        MOV     #DPYJSR,(T)+
+        CLR     (T)+            ;THIS ITEM'S LIST ADDR
+        CMP     (T)+,(T)+       ;JMP OR JSR TO NEXT LIST & NEXT LIST
+        MOV     A,(T)+          ;ITEM #
+        CLR     (T)+            ;LIST ADDR
+        CLR     (T)+            ;# OF SUBR CALLS TO THIS LIST
+        POP     T
+IINSRT: MOV     GRJMP,HJMIDX(T)
+        MOV     GRSTRT,HNXIDX(T)
+        MOV     T,GRSTRT                ;FLASH
+        MOV     #DPYJMP,GRJMP
+        RTS     PC
+
+;DELETE ITEM WITH # IN A
+;RETURN HEADR ADDR, IF ANY, IN T & CLR Z BIT
+GDELIS: JSR     PC,GETWRD
+DELIS:  JSR     PC,FHEDR
+        BEQ     RTSPC4          ;HEADER DOESN'T EXIST
+DELIS1: TST     HIAIDX(T)
+        BEQ     RTSPC4          ;NO ASSOCIATED LIST
+        CLR     HDSIDX(T)       ;DON'T SHOW IT
+        PUSH    A
+        MOV     HIAIDX(T),A     ;LIST ADDR
+        CLR     HIAIDX(T)
+        JSR     PC,RETLIN       ;FREE IT UP
+        POP     A
+        CLZ
+RTS     PC
+
+;LISP STYLE COMMANDS
+
+;HERE TO LOAD AN ITEM
+LODER:  JSR     PC,GETCNT
+        SUB     #LINHDR,A       ;LIST BYTES IN HEADER
+        PUSH    A               ;LIST SIZE IN A
+        JSR     PC,GETWRD
+        JSR     PC,CHEDR        ;CREATE A HEADR
+        MOV     T,B             ;HEADR ADDR
+        PUSH    B
+        JSR     PC,GTAIB        ;SET POINT
+        JSR     PC,GTAIB2       ;X&Y
+        POP     B
+        POP     A               ;LIST SIZE
+        JSR     PC,GETBLK       ;GET ITEM
+        MOV     A,T
+        MOV     A,HIAIDX(B)     ;LIST ADDR
+        MOV     #DPYRTS,(A)
+        MOV     T,HDSIDX(B)     ;DEST OF DPYJSR
+        MOV     A,B
+        JSR     PC,GTALL        ;GET WRDS UNTILL C=0, PUT THEM AT (B)+, CHECK
+        RTS     PC
+
+;HERE TO DELETE AN ITEM!
+DITEM:  JSR     PC,GDELIS
+        TST     T
+        BEQ     RTSPC4          ;NO HEADER EXISTS
+DHEDR:  TST     HSCIDX(T)
+        BNE     EDHEDR
+DITEM2: MOV     HJMIDX(T),HJMIDX(TT)    ;TAKE IT OUT OF DISPLAY LIST RING
+        MOV     HNXIDX(T),HNXIDX(TT)
+        PUSH    A
+        MOV     T,A             ;HEADER ADDR
+        JSR     PC,RETLIN
+        BR      POPAJ
+
+EDHEDR: NOP                     ;CAN'T DELETE THIS, IT'S A SUBR
+        RTS     PC
+
+;GET ALL WORDS AND INSERT AT (B)+, THEN CHECKSUM
+;MAIN LODER LOOP
+GTALL1: MOV     #DPYRTS,2(B)
+        JSR     PC,GTAIB
+GTALL:  TST     C
+        BGT     GTALL1
+LODEND: TST     C
+        BEQ     .+4
+        BPT             ;ODD # OF BYTES
+LGCKS:  JSR     PC,GETWRD
+        TSTB    CKS
+        BEQ     .+4
+        BPT             ;CHECKSUM
+        RTS     PC
+
+;HERE TO SHOW DISPLAY ITEM
+SITEM:  JSR     PC,GFITEM       ;GET ITEM NUMBER AND FIND IT
+        BEQ     RTSPC5          ;NO SUCH ITEM
+RSITEM: MOV     HIAIDX(T),HDSIDX(T)
+        RTS     PC
+
+;HERE TO ERASE ITEM
+EITEM:  JSR     PC,GFITEM
+        BEQ     RTSPC5          ;NO SUCH ITEM
+        CLR     HDSIDX(T)
+        RTS     PC
+
+;HERE TO CALL ITEM2 AS A SUBROUTINE OF ITEM1
+SBRITM: INC     C               ;2 MORE WORDS LEFT
+        JSR     PC,GFITEM
+        BEQ     IG1WD2
+        MOV     T,B             ;SOURCE ADDR
+        JSR     PC,GFITEM
+        BEQ     RTSPC5
+        INC     HSCIDX(T)       ;# OF TIMES THIS IS CALLED AS SUBR
+        ADD     #HDSIDX,T       ;WHERE TO DPYJSR TO
+        PUSH    T
+        MOV     HIAIDX(B),A     ;OLD DEST LIST
+        MOV     #4,T            ;ADDED SIZE OF CALLING ITEM
+        JSR     PC,TCOPY        ;COPY CALLING ROUTINE, RETURN WITH NEW
+                            	;PNTR TO LAST WORD IN T
+        MOV     #DPYJSI,(T)+    ;PUT A CALL TO SUBR AT END OF NEW COPY
+        POP     (T)+
+        MOV     #DPYRTS,(T)
+        PUSH    HIAIDX(B)       ;OLD DEST LIST
+        MOV     A,HIAIDX(B)
+        TST     HDSIDX(B)
+        BEQ     .+6             ;WASN'T BEING SHOWN
+        MOV     A,HDSIDX(B)     ;SHOW IT
+        POP     A
+        BEQ     RTSPC5          ;SHOULDN'T HAPPEN
+        JSR     PC,RETLIN       ;FLUSH OLD LIST
+RTSPC5: RTS PC
+
+;HERE TO UNSUBROUTINIZE AN ITEM
+USBITM: INC     C               ;2 MORE WORDS LEFT
+        JSR     PC,GFITEM
+        BEQ     IG1WD2
+        MOV     T,B             ;OLD SOURCE
+        JSR     PC,GFITEM
+        BEQ     RTSPC5
+        MOV     HIAIDX(B),B
+        MOV     T,A
+        ADD     #HDSIDX,A       ;DEST OF DPYJSRS
+USBIT1: CMP     (B),#DPYRTS
+        BEQ     RTSPC5          ;END OF THAT LIST
+        CMP     (B)+,#DPYJSI
+        BNE     USBIT1          ;THAT WORD WASN'T A SBR CALL
+        CMP     (B),A
+        BNE     USBIT1          ;DEST WASN'T WHAT WE WANTED
+        CLR     (B)             ;FLUSH IT
+        DEC     HSCIDX(T)       ;ONE LESS CALL TO ME
+        RTS     PC
+        BR      USBIT1          ;NOOP PREV INSTR TO REMOVE ALL CALLS TO THIS
+IG1WD2: JMP IG1WD
+
+;HERE TO COPY ITEM
+CITEM:  INC     C               ;2 MORE WORDS LEFT
+        JSR     PC,GFITEM
+        BEQ     IG1WD1          ;NO SUCH ITEM
+        PUSH    T               ;HEADER ADDRESS
+        JSR     PC,GETWRD
+        JSR     PC,CHEDR        ;CREATE A HEADER
+        POP     A               ;SOURCE HEADER ADDR
+        MOV     HSPIDX(A),HSPIDX(T)     ;SETPOINT
+        MOV     HXCIDX(A),HXCIDX(T)     ;X
+        MOV     HYCIDX(A),HYCIDX(T)     ;Y
+        TST     HIAIDX(A)
+        BEQ     RTSPC5          ;NO LIST
+        PUSH    A               ;OLD HEADER ADDR
+        PUSH    T               ;NEW HEADER ADDR
+        MOV     HIAIDX(A),A     ;LIST TO BE COPIED
+        CLR     T
+        JSR     PC,TCOPY        ;COPY LIST
+        POP     T               ;NEW HEADER ADDR
+        MOV     A,HIAIDX(T)     ;LIST ADDRESS
+        POP     A
+        TST     HDSIDX(A)
+        BEQ     RTSPC5          ;OLD ITEM WASN'T BEING SHOWN
+        MOV     HIAIDX(T),HDSIDX(T)
+        RTS     PC
+
+;MAKE A COPY OF ITEM WITH ADDRESS IN A,
+;LEAVE T EXTRA BYTES
+;RETURN PNTR TO NEW ITEM IN A, TO END OF NEW ITEM IN T
+TCOPY:  PUSH    TT
+        PUSH    A
+        MOV     -BLIDX(A),TT
+        BIC     #INUSE,TT
+        SUB     #BXTRA,TT       ;MAX LIST SIZE
+        ADD     A,TT            ;PNTR PAST END OF LIST
+TCOPY2: CMP     A,TT
+        BHIS    TCOPY3          ;PAST END OF LIST
+        CMP     (A)+,#DPYRTS    ;FIND THE END OF DISPLAY INSTRUCTIONS
+        BNE     TCOPY2
+TCOPY3: SUB     (SP),A
+        MOV     A,TT
+        ASR     TT              ;# OF WORDS TO BLT
+        PUSH    TT
+        ADD     T,A             ;GRAND TOTAL SIZE
+        JSR     PC,GETBLK
+        MOV     A,T             ;COPY ADDR
+        POP     TT              ;WD COUNT
+        POP     A               ;SOURCE ADDR
+        PUSH    T
+TCOPY1: MOV     (A)+,(T)+       ;BLT OLD ITEM TO NEW
+        DEC     TT
+        BGT     TCOPY1
+        TST     -(T)            ;LAST WORD IN COPY
+        POP     A               ;COPY ADDRESS
+        POP     TT
+        RTS     PC
+
+;CHANGE MODE (INTENSITY, BLINK, ETC)
+CMITEM: INC     C               ;2 MORE WORDS LEFT
+        JSR     PC,GFITEM
+IG1WD1: BEQ     IG1WD
+        JSR     PC,GETWRD
+        MOV     (T),TT          ;OLD SET GRAPH MODE WORD
+        BIC     #003777,TT      ;COMBINE OLD MODE
+        BIC     #174000,A       ;WITH NEW ENABLE, ETC. BITS
+        BIS     A,TT
+        MOV     TT,(T)          ;NEW WORD
+        RTS     PC
+
+;ADD TO ITEM1 N WORDS
+ADITEM: JSR     PC,GETCNT       ;RETURNS AMOUNT OF CORE WE NEED IN A
+        MOV     A,B             ;# OF XTRA BYTES
+        JSR     PC,GFITEM
+        BNE     ADITE1          ;BR IF FOUND ITEM
+        INC     C               ;IGNORE CKS ALSO
+        BR      IGWDS
+ADITE1: MOV     HIAIDX(T),A     ;OLD LIST ADDR
+        PUSH    A
+        PUSH    T               ;HEADR ADDR
+        MOV     B,T
+        JSR     PC,TCOPY
+        MOV     T,B             ;END OF NEW LIST
+        POP     T               ;HEADR ADR
+        MOV     A,HIAIDX(T)     ;LIST ADDR
+        TST     HDSIDX(T)
+        BEQ     ADITE2
+        MOV     A,HDSIDX(T)
+ADITE2: JSR     PC,GTALL
+        POP     A
+        JSR     PC,RETLIN       ;FREE OLD LIST SPACE
+        RTS     PC
+
+;MOVE AN ITEM TO X, Y
+MITEM:  MOV     #2,C            ;3 MORE WORDS
+        JSR     PC,GFITEM
+        BEQ     IG2WD           ;NO SUCH ITEM
+        MOV     T,B             ;ITEM ADDRESS
+        ADD     #HXCIDX,B
+        JSR     PC,GTAIB2       ;GET X&Y
+        RTS     PC
+
+;IGNORE 2 WORDS
+IG2WD:  MOV     #2,C
+        BR      IGWDS1
+;IGNORE 1 WORD
+IG1WD:  MOV     #1,C
+;IGNORE C WORDS
+IGWDS1: JSR     PC,GETWRD
+IGWDS:  TST     C
+        BGE     IGWDS1
+        RTS     PC
+
+;DYNAMIC STORAGE ALLOCATOR ROUTINES
+
+GETBLK: JSR     PC,EVENUP       ;INSURE AN EVEN # OF BYTES
+        ADD     #BXTRA,A        ;SIZE OF BLOCK HE REALLY WANTS
+        BGT     .+4
+        NOP                     ;HE WANTS NEGATIVE OR ZERO BLOCK
+        MOV     ROVER,T
+        BNE     GETBL1
+        MOV     @AVAIL,T
+        MOV     T,ROVER
+GETBL1: MOV     (T),TT          ;NEXT BLOCK
+        CMP     A,-2(T)
+        BLOS    GETBL2          ;FOUND A WINNER
+        CMP     TT,AVAIL
+        BEQ     GETBL3          ;END OF CHAIN
+        MOV     TT,T
+        BR      GETBL1
+
+;HERE IF WINNER FOUND
+
+GETBL2: MOV     TT,ROVER
+        SUB     A,-2(T)         ;SIZE OF THIS BLOCK NOW
+        CMP     -2(T),#NEBISH
+        BLO     GETB21
+        MOV     T,TT            ;BREAK INTO TWO BLOCKS
+        ADD     -2(T),TT        ;ORIGIN OF NEW BLOCK
+        MOV     -2(T),-4(TT)    ;SIZE INTO TOP OF OLD BLOCK
+GETBL4: MOV     A,T             ;LENGTH OF NEW BLOCK
+        BIS     #INUSE,A        ;MARKS BLOCK IN USE
+        CLR     (TT)+           ;CLEAR FREE NEXT BLK PNTR
+        MOV     A,-BLIDX(TT)    ;MARKER INTO BLOCK
+        MOV     TT,A            ;RETURN POINTER TO CALLER
+        ADD     T,TT            ;ORIGIN OF NEXT BLOCK
+        MOV     #INUSE,-BLIDX-2(TT)     ;MARK LAST WORD OF NEW BLOCK
+        RTS     PC
+
+;HERE TO GIVE CALLER ENTIRE BLOCK
+
+GETB21: JSR     PC,UNLINK       ;TAKE BLOCK OUT OF FREE LIST
+        ADD     -2(T),A         ;SIZE OF BLOCK
+        MOV     T,TT            ;NEW BLOCK
+        BR      GETBL4
+
+;BLOCK FORMAT
+;FREE BLOCK
+;SIZE
+BNXIDX==2       ;PNTR TO NEXT FREE BLOCK
+                ;PNTR TO PREVIOUS FREE BLOCK
+                ;BLOCK
+;SIZE
+
+        ;ALLOCATED BLOCK
+;SIZE!INUSE
+;IF NON-ZERO, PNTR TO NEXT BLOCK TO BE FREED
+BLIDX==BNXIDX+2 ;BLOCK
+;SIZE!INUSE
+
+BXTRA==6                ;NUMBER OF EXTRA BYTES IN A BLOCK
+
+;HERE ON END OF FREE LIST
+
+GETBL3: TST     ROVER
+        BEQ     ENOFRE          ;BLOCK CANNOT BE FOUND
+        CLR     ROVER
+        MOV     @AVAIL,T
+        BR      GETBL1
+
+;TAKES BLOCK IN T AND PATCHES IT OUT OF FREE STORAGE LIST
+UNLINK: MOV     (T),TT
+        MOV     TT,@2(T)        ;PATCH FORWARD POINTER INTO PRECEEDING BLOCK
+        MOV     2(T),2(TT)      ;PATCH BACK POINTER INTO NEXT BLOCK
+        CMP     ROVER,T
+        BNE     .+6
+        MOV     TT,ROVER        ;DON'T LET ROVER POINT TO NON-EXISTENT BLOCK
+        RTS     PC
+
+
+;ERROR ROUTINES
+ENOFRE: CLR     A               ;NO FREE STORAGE LEFT
+        JSR     PC,ESND
+        MOV     #GO,SP
+        JMP     GO1
+
+EINT:   MOV     #34,A           ;INTERNAL ERROR
+ESND:   MOV     A,@AKLOB
+        BR      .+6
+ESND1:  JSR     PC,GETWRD
+        TST     C               ;IGNORE C+1 WORDS
+        BGE     ESND1
+        RTS     PC
+;HERE TO RETURN A BLOCK TO FREE STORAGE (RUNS DURING DISPLAY INTERRUPTS)
+
+RETBLK: MOV     A,OLDBLK        ;SAVE FOR DEBUGGING
+        TST     -(A)
+        CMP     A,#FS+2
+        BHIS    .+4
+        NOP                     ;CAN'T TAKE THAT ONE BACK
+        MOV     -2(A),T         ;SIZE
+        BIT     #INUSE,T
+        BNE     .+4
+        NOP                     ;CAN'T FREE A BLOCK WHICH ISN'T IN USE
+        MOV     (A),RETLAD      ;IF NZ, NEXT BLOCK TO BE FREED
+        BIC     #INUSE,T
+        BIT     #INUSE,-4(A)    ;IS BLOCK BELOW RESERVED
+        BNE     RETBL1          ;YES, CHECK LOWER BOUND
+        SUB     -4(A),A         ;POINTS TO ENLARGED BLOCK
+        ADD     T,-2(A)         ;NEW SIZE
+        MOV     A,T
+        ADD     -2(A),T         ;POINTS TO BLOCK ABOVE
+        MOV     -2(A),-4(T)     ;PUT MARKER AT TOP OF BLOCK
+        BIT     #INUSE,-2(T)
+        BNE     RTSPC2          ;BLOCK ABOVE RESERVED, GOOD BYE
+        ADD     -2(T),-2(A)     ;NEW SIZE OF MOBY BIG BLOCK
+        JSR     PC,UNLINK       ;TAKE THIS BLOCK OUT OF FREE LIST
+        MOV     A,T             ;MARK TOP OF ENLARGED BLOCK
+        ADD     -2(A),T         ;POINTS TO NEXT BLOCK
+        MOV     -2(A),-4(T)     ;MARK TOP OF BLOCK WITH SIZE
+        RTS     PC
+
+;BLOCK BELOW RESERVED, CHECK ABOVE
+
+RETBL1: MOV     T,-2(A)         ;MARK THIS BLOCK AS FREE
+        ADD     A,T             ;POINTS TO NEXT BLOCK
+        MOV     -2(A),-4(T)     ;MARKER INTO TOP OF BLOCK
+        BIT     #INUSE,-2(T)
+        BNE     LINK            ;BR IF BLOCK ABOVE RESERVED, PATCH THIS
+	   JSR     PC,UNLINK       ;TAKE BLOCK ABOVE OUT OF FREE STORAGE
+        ADD     -2(T),-2(A)     ;NEW SIZE
+        MOV     A,T
+        ADD     -2(A),T         ;POINTS TO NEXT BLOCK
+        MOV     -2(A),-4(T)     ;MARK TOP OF BLOCK
+LINK:                           ;PATCH THIS IN AT AVAIL
+        CMP     ROVER,A
+        BNE     .+6
+        CLR     ROVER
+        MOV     AVAIL,T         ;PREVIOUS BLOCK
+        MOV     (T),TT          ;NEXT BLOCK
+        MOV     A,(T)           ;FWD PNTR IN PREV BLK
+        MOV     TT,(A)          ;FWD PNTR IN THI BLK
+        MOV     T,2(A)          ;BACK PNTR IN THIS BLK
+        MOV     A,2(TT)         ;BACK PNTR IN NEXT BLK
+RTSPC2: RTS     PC
+
+;MAIN PROGRAM LEVEL ROUTINE TO RETURN BLOCK AT INTERRUPT LEVEL
+
+RETLIN: PUSH    PS
+        MOV     DSPSW,PS        ;GO TO DISPLAY INTERRUPT LEVEL
+        MOV     RETLAD,-BNXIDX(A)       ;ADD LIST TO FRONT OF CHIAN
+        MOV     A,RETLAD
+        EMT     0                ;IF DISP ISN'T RUNNING, FREE BLOCK ON DISBRK LE!VEL
+.IF NE DEBUG
+        IOT                     ;FAKE A DISPLAY INTERRUPT
+.ENDC
+        POP     PS
+        RTS     PC
+
+;SOME LOWER LEVEL GOODIES
+
+EVENUP: BIT     #1,A
+        BEQ     RTSPC2
+        INC     A
+        RTS     PC
+
+ACSAV:  PUSH    A               ;CALL WITH JSR U,
+        PUSH    B
+        PUSH    C
+        PUSH    T
+        PUSH    TT
+        JMP     @U
+
+ACRES:  TST     (SP)+           ;CALL WITH JSR U,
+        POP     TT
+        POP     T
+        POP     C
+        POP     B
+        POP     A
+        RTS     U
+
+DPYSAV: MOV     DPC,SAVDPC      ;SAVE STATE OF DISPLAY
+        MOV     DSR,SAVDSR
+        MOV     XSR,SAVXSR
+        MOV     YSR,SAVYSR
+        RTS     PC
+
+.IF NE DEBUG
+
+;DEBST-- START UP 11/20
+
+DEBST:  MOV     #174000,AKLIS
+        MOV     #174002,AKLIB
+        MOV     #174004,AKLOS
+        MOV     #174006,AKLOB
+        MOV     #KLIBRK,320     ;WAS CLOBBERED
+        MOV     #DSBRK,20       ;USE IOT TO FAKE DISPLAY INTERRUPT
+        MOV     DSPSW,22
+        MOV     #FDPC,ADPC
+        RTS     PC
+
+FDPC:   0       ;FAKE DPC
+
+.ENDC
+
+;SOME DEBUGGING AIDS
+
+;VERSE:  %FNAM2  ;VERSION NUMBER
+
+ADPC:   DPC     ;CAN BE CHANGED TO NON-NXM FOR DEBUGGING ON PDP11
+AKLIS:  KLIS
+AKLIB:  KLIB
+AKLOS:  KLOS
+AKLOB:  KLOB
+
+;VARIABLES
+
+ACTCHR: 0       ;# CHARACTERS BUFFERED
+GETCC:  0       ;WHERE TO GET NEXT CHARACTER
+PUTCC:  0       ;WHERE TO PUT NEXT CHARACTER
+CLINE:  0       ;CURRENT LINE (STARTS AT 0)
+CPOS:   0       ;CURSOR POSITION ON LINE
+CURSX:  0       ;X-Y CURSOR POSITION
+CURSY:  0
+BYTCNT: 0       ;# CHARACTERS ON THIS LINE
+LINPNT: 0       ;BYTE POINTER INTO LINBUF
+NOGLIT: 0       ;NON-ZERO IMPLIES WE WANT NO GLITCHING
+OCSR:   0       ;OLD CONSOLE SWITCH REGISTER
+MEMTOP: 0       ;FIRST NXM
+AVAIL:  0       ;POINTS TO FIRST FREE BLOCK
+ROVER:  0       ;POINTS TO HEAD OF SEARCH LIST
+OLDBLK: 0
+CASE:   0       ;-1 IMPLIES SHIFT OUT (SPECIAL CHARACTERS)
+TEXTP:  0       ;INDIRECT POINTER TO TEXT LINE
+TLINE:  0       ;INDEX OF TOP RING ON SCREEN
+LNSPGL: 1       ;LINES PER GLITCH
+CKS:    0       ;LODER CHECKSUM
+COMAND: 0       ;FOR DEBUGGING (DISPLAY SLAVE COMMAND)
+COUNT:  0       ;FOR DEBUGGING (# BYTES IN LODER BLOCK)
+DSTOPD:	0
+;INTERUPT LEVEL STORAGE
+
+.IF NE DLIMSW
+TICKS:  0       ;CLOCK TICK TIMER
+DTIME:  0       ;TIME TO DISPLAY EVERYTHING
+DSTOPD: 0       ;IF NON 0, WHERE DISPLAY STOPPED
+.ENDC
+.IF NE PCHIST
+PCPNT:  0
+PCBUF:  .=.+PCBFL
+.ENDC
+RETLAD: 0       ;ADDRESS OF BLOCK TO BE RETURNED
+SAVSP:  0       ;SP SAVED AT POWER FAILURE
+SAVDPC: 0       ;DPY STATUS AT LAST DISPLAY BREAK
+SAVDSR: 0
+SAVXSR: 0
+SAVYSR: 0
+FORGIV: -1      ;IF NON-ZERO, IGNORE MYSTERIOUS DISPLAYS STOPS
+;TEXT RING HEADER
+
+DPYSA:
+.IF NE DLIMSW
+STSNRM          ;SET STATUS REGISTER
+.ENDC
+.IF EQ DLIMSW
+STSNRM!4        ;RESTART IN SYNC WTH LINE FREQ
+.ENDC
+DPYSPT: SETPNT+DPYNRM   ;CURSOR
+RCURSX: 0
+RCURSY: NLINS-CHRHT+1
+        CHARS
+	   ;<177_10>+17     ;CURSOR
+        77400+17
+        17              ;SHIFT IN
+        0
+SETPNT+DPYNRM
+        0               ;X
+        NLINS-CHRHT+1   ;Y
+        DPYJSR
+TXSTRT: 0               ;PATCHED BY PROGRAM
+        DPYJSR
+	   GRJSR
+        DPYJMP
+        DPYSA
+
+;GRHDR==.-HJSIDX
+GRJSR:  DPYNOP
+	   DPYNOP
+GRJMP:  DPYRTS
+GRSTRT: 0
+
+;FORMAT OF DISPLAY ITEM
+HSPIDX==0       ;SETPOINT
+HXCIDX==2       ;X CORDINATE
+HYCIDX==4       ;Y COORDINATE
+HJSIDX==6       ;DPYJSR
+HDSIDX==10      ;DESTINATION (LIST)
+HJMIDX==12      ;DPYJMP
+HNXIDX==14      ;ADDRESS OF NEXT HEADER
+HITIDX==16      ;ITEM NUMBER
+HIAIDX==20      ;ADDRESS OF LIST
+HSCIDX==22      ;# OF SUBROUTINE CALLS TO THIS LIST
+
+HSIZE==HSCIDX+2         ;SIZE OF HEADER
+LINHDR==HYCIDX+2        ;NUMBER OF LIST BYTES IN HEADER
+
+;DISPLAY LIST
+;DPYRTS
+XITEM==2                ;NUMBER OF EXTRA BYTES IN LIST (DPYRTS)
+
+;RING OF LINE HEADERS
+
+LHDRS==12       ;SIZE OF LINE HEADER
+
+                ;DPYJSR
+TXTIDX==2       ;OFFSET OF TEXT POINTER
+JMPIDX==4       ;OFFSET OF DPYJMP
+NXTIDX==6       ;OFFSET OF NEXT LINE HEADER
+BACIDX==10      ;OFFSET OF BACK POINTER
+
+
+FAKEL:  CHARS
+	;<<15_10>+12>
+	6400+12
+        DPYRTS
+
+LOWLIN: DPYJSR
+	   0
+        DPYJMP
+        .+4
+        HILIN
+
+.REPT CHRLN-2
+	 DPYJSR
+	 0
+	 DPYJMP
+   	 .+4
+	 .+2-<LHDRS*2>
+.LIST
+.ENDR
+
+HILIN:  DPYJSR
+	0
+	DPYRTS
+	LOWLIN
+	.+2-<LHDRS*2>
+;DL11 INPUT BUFFER
+
+BUF=.
+.=.+BUFSIZ
+BUFEND==.
+
+;DPY CHARACTER LINE BUFFER
+
+LINBUF=.
+.=.+LBL
+
+;DPY PUSH DOWN LIST
+
+DPYPDP: 0       ;PUSH DOWN POINTER
+DPYPDC: 0       ;PUSH DOWN COUNTER
+DPYPDB=.
+.=.+DPYPDL
+
+;PATCH AREA
+
+PAT:
+PATCH:
+.=.+PATL
+
+;FAKE BLOCK
+FAKEBL: 0
+FS+2
+FAKEBL+2
+-1
+
+;FREE STORAGE
+FS=.            ;FREE STORAGE STARTS HERE
+
+.END GO
