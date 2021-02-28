@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GT40", "GT40.vcproj", "{49499E1B-5019-4B98-9DC7-2E73306D5578}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{49499E1B-5019-4B98-9DC7-2E73306D5578}.Debug|Win32.ActiveCfg = Debug|Win32
+		{49499E1B-5019-4B98-9DC7-2E73306D5578}.Debug|Win32.Build.0 = Debug|Win32
+		{49499E1B-5019-4B98-9DC7-2E73306D5578}.Release|Win32.ActiveCfg = Debug|Win32
+		{49499E1B-5019-4B98-9DC7-2E73306D5578}.Release|Win32.Build.0 = Debug|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
