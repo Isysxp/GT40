@@ -428,7 +428,8 @@ int main (int argc, char *argv[])
 
     sim_os_set_thread_priority (PRIORITY_ABOVE_NORMAL);
 
-    while (!MLoop());
+    while (!MLoop())
+        SDL_Delay(10);
 
     SDL_WaitThread (vid_main_thread_handle, &status);
     vid_close();
@@ -910,9 +911,7 @@ static int MLoop() {
     xmev->x_rel = rel_x;
     xmev->y_rel = rel_y;
 
-    SDL_WaitEventTimeout(&event,20);
-
-    if (event.type) {
+    if (SDL_PollEvent(&event)) {
         switch (event.type) {
                 case SDL_QUIT:
                     return 0;
@@ -960,7 +959,6 @@ static int MLoop() {
         }
         if (!sim_is_running)
             vid_poll_mouse(xmev);                               // When sim is stopped, still allow mouse events
-        event.type=0;
     }
     return 0;
 }
