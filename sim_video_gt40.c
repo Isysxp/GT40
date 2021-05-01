@@ -79,7 +79,7 @@ char bfr[128];
 
 extern void write_console_input(unsigned char *msg, int len);
 extern void run_cmd_message (const char *unechoed_cmdline, t_stat r);
-
+extern t_bool vt_stop_flag;
 extern int SR,R[8];
 int DR;                     // Display register
 static int iwd,iht,told,tnew,tvl,hpc;
@@ -429,7 +429,7 @@ int main (int argc, char *argv[])
     sim_os_set_thread_priority (PRIORITY_ABOVE_NORMAL);
 
     while (!MLoop())
-        SDL_Delay(10);
+        SDL_Delay(10);								// Transiently de-schedule this thread.
 
     SDL_WaitThread (vid_main_thread_handle, &status);
     vid_close();
@@ -782,6 +782,33 @@ void vid_draw (int32 x, int32 y, int32 w, int32 h, uint32 *buf)
     return;
 }
 
+void vid_blur(unsigned char *dst,unsigned char *src,int h,int w,int step)
+{
+    unsigned char *p,*a,*b,*c;
+    int x,y,i,j,px,vl,pxstp=(bgnd_x-init_w)*4;
+
+    p=src+w*4+5;
+    a=dst+1;
+    b=dst+w*4+1;
+    c=dst+w*8+1;
+    for (i=1;i<w-1;i++,p+=8+step,a+=8,b+=8,c+=8) {
+        for (j=1;j<h-1;j++,p+=4,a+=4,b+=4,c+=4) {
+            if ((vl=*p>>2)) {
+                for (x=0;x<3;x++,a+=4,b+=4,c+=4)
+                {
+                    *a=*a+vl<0xff?*a+vl:0xff;
+                    *b=*b+vl<0xff?*b+vl:0xff;
+                    *c=*c+vl<0xff?*c+vl:0xff;
+                    if (x==1)
+                        *b=*p;
+                }
+                a-=12;b-=12;c-=12;
+            }
+        }
+    }
+}
+
+
 /*
 The function is central to all display system. Firstly, the current surface (effectively a back buffer)
 is copied to the screen surface by SDL_UpdateWindowSurface. This function (hopefully) calls a GPU
@@ -804,10 +831,12 @@ static int Refresh(void *info) {
     unsigned char *p, lo;
     Uint8 b;
     double *d;
-    static int led_cntr;
+    static int led_cntr,tlast;
+    unsigned char *buf=calloc(init_w*init_h, 4);
 
     while (window && vid_init != STOPPED) {
         told=sim_os_msec();
+        tlast=told;
         lo = tekout?200:0;                                  // When in tek mode, fade to 200 rather than 0
         if (vid_init == RUNNING) {				            // If halted ... freeze display and, display valid
 
@@ -821,11 +850,6 @@ static int Refresh(void *info) {
                                 *p = (unsigned char)(*p * (*d) - 1);	// Decay pixels>lo only
         }
 
-        tnew = sim_os_msec();
-        tvl = 20 - tnew + told;				// Calculate delay required for a constant update time of 20mSec. 
-        if (tvl < 0)						// System not fast enough so just continue with no delay.
-            tvl = 0;
-        SDL_Delay(tvl);                     // This delay is required here to allow SDL to update the window
 
         if (vid_init == RUNNING) {
             if (!sim_is_running) {
@@ -849,7 +873,15 @@ static int Refresh(void *info) {
                     SDL_BlitSurface(img_led_off,NULL,surface,&led_dst);
             }
         }
+
+        tnew = sim_os_msec();
+        tvl = 20 - tnew + told;				// Calculate delay required for a constant update time of 20mSec. 
+        if (tvl < 0)						// System not fast enough so just continue with no delay.
+            tvl = 0;
+        SDL_Delay(tvl);                     // This delay is required here to allow SDL to update the window
+
     }
+    free(buf);
     return 0;							// The window has been closed by vid_close ... exit thread
 }
 
@@ -957,7 +989,7 @@ static int MLoop() {
                     break;
 
         }
-        if (!sim_is_running)
+        if (!sim_is_running || vt_stop_flag==0)
             vid_poll_mouse(xmev);                               // When sim is stopped, still allow mouse events
     }
     return 0;
@@ -1131,7 +1163,7 @@ t_stat vid_setpixel(int ix,int iy,int level,int color) {
     if (vid_init == RUNNING) {
         p=(Uint32 *)(pixels + (iy * surface->pitch) + (ix * sizeof(Uint32)));
         if (alias)
-            *p = (alias << 8) & pxval;      // Level is 0-255
+            *p = (alias << 8) & 0xff00;      // Level is 0-255 of green only
         else
             *p = ((128 << 8) + (level << 12)) & pxval;     // Level is 0-7;
 //            *p = pxval;

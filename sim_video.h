@@ -199,9 +199,10 @@ t_stat vid_show_release_key (FILE* st, UNIT* uptr, int32 val, CONST void* desc);
 t_stat vid_lock_cursor(void);
 t_stat vid_unlock_cursor(void);
 void write_console_input(unsigned char *str, int length);
-
+void vid_blur(unsigned char *dst,unsigned char *src,int h,int w,int step);
 extern uint32 vid_mono_palette[2];
 extern int alias;
+extern int32 vt11_alias;                                /* Antialiasing flag */
 extern t_stat tekout;
 void vid_set_cursor_position (int32 x, int32 y);        /* cursor position (set by calling code) */
 

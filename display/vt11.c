@@ -1413,7 +1413,7 @@ lineTwoStep(int32 x0, int32 y0, int32 z0, int32 x1, int32 y1, int32 z1)
         xlineTwoStep(x0, y0, z0, x1, y1, z1);
         return;
     }
-    x0+=2;x1+=2;y0+=2;y1+=2;
+    //x0+=2;x1+=2;y0+=2;y1+=2;
     x0 /= reduce;
     y0 /= reduce;
     x1 /= reduce;
@@ -1457,9 +1457,9 @@ lineTwoStep(int32 x0, int32 y0, int32 z0, int32 x1, int32 y1, int32 z1)
 			// pixel coverage is determined by fractional 
 			// part of y co-ordinate
             // display_point((int)x, (int)y, DISPLAY_INT_MAX, 0);
-            alias = (int)(255-gma*rfPartOfNumber(intersectY));
+            alias = (int)(255-gma*rfPartOfNumber(intersectY)) | 1;
 			lpoint(iPartOfNumber(intersectY), x, z0);
-            alias = (int)(255-gma*fPartOfNumber(intersectY));
+            alias = (int)(255-gma*fPartOfNumber(intersectY)) | 1;
 			lpoint(iPartOfNumber(intersectY)-1, x, z0);
 			intersectY += gradient;
             y0 = x;
@@ -1473,9 +1473,9 @@ lineTwoStep(int32 x0, int32 y0, int32 z0, int32 x1, int32 y1, int32 z1)
 		{ 
 			// pixel coverage is determined by fractional 
 			// part of y co-ordinate 
-            alias = (int)(255-gma*rfPartOfNumber(intersectY));
+            alias = (int)(255-gma*rfPartOfNumber(intersectY)) | 1;
 			lpoint(x, iPartOfNumber(intersectY), z0);
-            alias = (int)(255-gma*fPartOfNumber(intersectY));
+            alias = (int)(255-gma*fPartOfNumber(intersectY)) | 1;
 			lpoint(x, iPartOfNumber(intersectY)-1, z0);
 			intersectY += gradient; 
             x0 = x;
@@ -1484,7 +1484,7 @@ lineTwoStep(int32 x0, int32 y0, int32 z0, int32 x1, int32 y1, int32 z1)
 		} 
 	}
     
-    lpoint(hx1, hy1, z1);         /* not TPOINT (0-length vector on resume) */
+    //lpoint(hx1, hy1, z1);         /* not TPOINT (0-length vector on resume) */
     alias = 0;
 
     return;
