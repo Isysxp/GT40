@@ -47,7 +47,7 @@ double *colmap;										/* Parameter used by Refresh and vid_setpixel in sim_vi
 int32 pxval;										/* Also referenced in display.c */
 int nostore=0;							            /* Enables storage display. Always defined. */
 int alias;                                          /* Aliasing active flag. Required to set correct pixel intensity */
-
+int vt_status;                                      /* VT11 run/stop flag */
 
 char vid_release_key[64] = "Ctrl-Right-Shift";
 char bfr[128];
@@ -79,7 +79,6 @@ char bfr[128];
 
 extern void write_console_input(unsigned char *msg, int len);
 extern void run_cmd_message (const char *unechoed_cmdline, t_stat r);
-extern t_bool vt_stop_flag;
 extern int SR,R[8];
 int DR;                     // Display register
 static int iwd,iht,told,tnew,tvl,hpc;
@@ -989,8 +988,9 @@ static int MLoop() {
                     break;
 
         }
-        if (!sim_is_running || vt_stop_flag==0)
-            vid_poll_mouse(xmev);                               // When sim is stopped, still allow mouse events
+        if (!sim_is_running || !vt_status)
+            vid_poll_mouse(xmev);                               // When VT11 or sim are stopped, still allow mouse events
+        vt_status = 0; 
     }
     return 0;
 }

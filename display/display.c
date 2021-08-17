@@ -258,9 +258,12 @@ static int scale;
 extern "C" {
 #endif
 
+    /* Externs see sim_video_gt40.c */
+
 extern double *colmap;
 extern int32 pxval;
 extern t_stat vid_setpixel(int ix,int iy,int level,int color);
+extern int vt_status;
 
 #ifdef  __cplusplus
 }
@@ -444,6 +447,7 @@ display_age(int t,          /* simulated us since last call */
 		display_delay(t, slowdown);
 
     changed = 0;
+    vt_status = 1;                  /* Set on every display cycle */
 	display_sync();
 	return 0;
 
