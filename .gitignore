@@ -35,3 +35,7 @@ _ReSharper*/
 ipch/
 
 
+*.htm
+*.manifest
+BIN/NT/Project/simh/GT40/Win32-Debug/vc90.idb
+*.exp
