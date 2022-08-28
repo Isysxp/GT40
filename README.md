@@ -109,4 +109,5 @@ To this end, there are a number of options:
 	
 1.	This app will not buid for Windows using Visual Studio 2019/2022 due to the well known __iob_func problem.
 	This error is quite hard to fix and requires a new version of SDL. I stongly suggest that you use Visual
-	Studio 2008 at the moment until this can be fixed.
+	Studio 2008 at the moment until this can be fixed. In the meanwhile, change the linked library setting to
+	include SDL2.dll and remove the definition HAVE_LIBPNG. 
