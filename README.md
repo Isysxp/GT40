@@ -104,3 +104,9 @@ To this end, there are a number of options:
 
 	This software is provided under GPLv3.
 	Ian Schofield Jan 2021.
+
+	Comments for 2022::
+	
+1.	This app will not buid for Windows using Visual Studio 2019/2022 due to the well known __iob_func problem.
+	This error is quite hard to fix and requires a new version of SDL. I stongly suggest that you use Visual
+	Studio 2008 at the moment until this can be fixed.
