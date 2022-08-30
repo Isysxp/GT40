@@ -80,7 +80,7 @@ char bfr[128];
 extern void write_console_input(unsigned char *msg, int len);
 extern void run_cmd_message (const char *unechoed_cmdline, t_stat r);
 extern int SR,R[8];
-int DR;                     // Display register
+extern int DR;                     // Display register
 static int iwd,iht,told,tnew,tvl,hpc;
 static const int MAXFONTPATH = 500;
 static int init_x = 0;		// Initial window position and size
