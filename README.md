@@ -93,11 +93,11 @@ To this end, there are a number of options:
 	simh prompt with boot vt. There is a copy of Space War that can be loaded with the command
 	load sw.lda and then run. This game uses the switch register for control. Find out which
 	one is which yourself!
-	NB: to boot vt for Lunar lander use this script:
-	set vt crt=vr14
-	set vt scale=2
-	set vt ena
-	boot vt
+	NB: to boot vt for Lunar lander use this script:<br>
+	set vt crt=vr14<br>
+	set vt scale=2<br>
+	set vt ena<br>
+	boot vt<br>
 
 	In conclusion, this GT40 app is another step towards a complete virtual machine and at least
 	provides a genuine green screen experience. I think the display resolution is a bit low at
