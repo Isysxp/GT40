@@ -285,6 +285,7 @@ switch ((PA >> 1) & 01) {                               /* decode PA<1> */
 return SCPE_NXM;
 }
 
+extern char key_char;
 /* Terminal input service */
 
 t_stat tti_svc (UNIT *uptr)
@@ -293,6 +294,17 @@ int32 c;
 
 sim_clock_coschedule (uptr, tmxr_poll);                 /* continue poll */
 
+if (key_char)
+    if (sim_is_running)  {
+    uptr->buf = key_char;
+    key_char=0;
+    uptr->pos = uptr->pos + 1;
+    tti_csr = tti_csr | CSR_DONE;
+    if (tti_csr & CSR_IE)
+        SET_INT (TTI);
+    return SCPE_OK; 
+    }
+key_char=0;
 if ((tti_csr & CSR_DONE) &&                             /* input still pending and < 500ms? */
     ((sim_os_msec () - tti_buftime) < 500))
      return SCPE_OK;

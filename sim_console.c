@@ -178,6 +178,7 @@ int32 sim_del_char = '\b';                              /* delete character */
 int32 sim_del_char = 0177;
 #endif
 extern TMLN *sim_oline;                                 /* global output socket */
+char key_char;
 
 static t_stat sim_con_poll_svc (UNIT *uptr);                /* console connection poll routine */
 static t_stat sim_con_reset (DEVICE *dptr);                 /* console reset routine */
@@ -4025,13 +4026,14 @@ runtty.c_cc[VSTATUS] = 0;
 return SCPE_OK;
 }
 
-/* Inject string into console input stream */
+/* Inject string into console input stream see stddev.c*/
 
 void write_console_input(unsigned char *str, int length)
 {
 	while (*str) {
 		if (*str == 8)
 			*str=0377;			/* ^H to RO */
+        key_char=*str;      /* Set by UI Keypress */
 		ioctl(0, TIOCSTI, str++);
 	}
 }

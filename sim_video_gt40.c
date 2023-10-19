@@ -51,6 +51,7 @@ int vt_status;                                      /* VT11 run/stop flag */
 
 char vid_release_key[64] = "Ctrl-Right-Shift";
 char bfr[128];
+int dflag;
 
 // Only include SDL code if specified. See end of this module for stubbed code.
 
@@ -541,7 +542,7 @@ t_stat vid_create_window(void)
     bset3_up = SDL_LoadBMP("Bset2_Up_2.bmp");
     dep_down = SDL_LoadBMP("Dep_Down.bmp");
     dep_up = SDL_LoadBMP("Dep_Up.bmp");
-
+    dflag = 0;
     // Create an application window with the following settings:
     SDL_Init (SDL_INIT_VIDEO);
     window = SDL_CreateWindow(
@@ -839,8 +840,6 @@ static int Refresh(void *info) {
         lo = tekout?200:0;                                  // When in tek mode, fade to 200 rather than 0
         if (vid_init == RUNNING) {				            // If halted ... freeze display and, display valid
 
-            SDL_UpdateWindowSurface(window);				// Write the surface to the host system window
-
             if (!nostore && sim_is_running)                 // Only decay the pixels in store mode and if the simulator is running
                 for (k=0,p=(unsigned char *)pixels;k<init_h;k++,p+=pxstp)
                     for (i = 0;i < init_w; i++, p++)
@@ -874,11 +873,11 @@ static int Refresh(void *info) {
         }
 
         tnew = sim_os_msec();
-        tvl = 20 - tnew + told;				// Calculate delay required for a constant update time of 20mSec. 
+        tvl = 18 - tnew + told;				// Calculate delay required for a constant update time of 20mSec. 
         if (tvl < 0)						// System not fast enough so just continue with no delay.
             tvl = 0;
         SDL_Delay(tvl);                     // This delay is required here to allow SDL to update the window
-
+        dflag++;
     }
     free(buf);
     return 0;							// The window has been closed by vid_close ... exit thread
@@ -926,6 +925,10 @@ static int MLoop() {
             vid_create_window();	// Create window and begin receiving events
             break;
         case RUNNING:               // No action.
+            if (dflag) {
+                SDL_UpdateWindowSurface(window);
+                dflag = 0;
+            }
             break;
         case CLOSING:
             return -1;				// Exit message loop and start shutdown
