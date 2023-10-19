@@ -123,9 +123,9 @@ To this end, there are a number of options:
 <br>
 	Update Oct 2023:<br>
  <br>
- 	This update is for evlautaion purposes at the moment. 1: recent 64 bit SDL2 libraries do not allow
+ 	This update is for evaluation purposes at the moment.<br> 1: recent 64 bit SDL2 libraries do not allow
 	UpdateWindowSurface off the SDL main thread. Mloop() and refresh() have been updated to correct this.
-	This does affect the screen refresh so any comments about display quality would be great.
+	This does affect the screen refresh so any comments about display quality would be great.<br>
 	2: console command injection which is used for key strokes into the GT40 UI window has been updated
 	as the use of TIOCSTI is deprecated. The update is to the conaole KL11 handler in pdp11_stddev such that
 	a key event in the UI window is now injected into the KL11 (or remote) input stream. This is equivalent
