@@ -4033,8 +4033,8 @@ void write_console_input(unsigned char *str, int length)
 	while (*str) {
 		if (*str == 8)
 			*str=0377;			/* ^H to RO */
-        key_char=*str;      /* Set by UI Keypress */
-		ioctl(0, TIOCSTI, str++);
+        key_char=*str++;      /* Set by UI Keypress */
+		//ioctl(0, TIOCSTI, str++);
 	}
 }
 

@@ -118,7 +118,14 @@ static SDL_Surface *img_led,*img_led_src,*img_led_off;
 static SDL_Surface *bset1_down,*bset1_up;
 static SDL_Surface *dep_down,*dep_up;
 static SDL_Surface *bset2_down,*bset2_up,*bset3_down,*bset3_up;
+	// triggers the program that controls
+	// your graphics hardware and sets flags
+Uint32 render_flags = SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC;
+SDL_Texture *tex;
+	// creates a renderer to render our images
+SDL_Renderer* rend;
 
+int fcntr=0,fdelay=0;
 static SDL_Rect led_dst,pdl_dst;
 int32 vid_flags;                                                 /* Open Flags */
 static int bgnd_x=0,bgnd_y=0,ofset_x=0,ofset_y;                  /* Image info */
@@ -547,11 +554,11 @@ t_stat vid_create_window(void)
     SDL_Init (SDL_INIT_VIDEO);
     window = SDL_CreateWindow(
         vid_title,							// window title
-        SDL_WINDOWPOS_UNDEFINED,			// initial x position
-        SDL_WINDOWPOS_UNDEFINED,			// initial y position
+        SDL_WINDOWPOS_CENTERED,			// initial x position
+        SDL_WINDOWPOS_CENTERED,			// initial y position
         bgnd_x,                             // width, in pixels
         bgnd_y,                             // height, in pixels
-        SDL_WINDOW_SHOWN					// flags
+        SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL					// flags
         );
 
     // Check that the window was successfully created
@@ -572,6 +579,15 @@ t_stat vid_create_window(void)
         fprintf(stderr, "Invalid pixel format.\n");
         exit(-1);
     }
+    rend = SDL_GetRenderer(window);
+    if (rend)
+        SDL_DestroyRenderer(rend);
+    rend=SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (!rend)
+        printf("%s\r\n",SDL_GetError());
+    tex = SDL_CreateTextureFromSurface(rend, surface);
+    if (!tex)
+        printf("%s\r\n",SDL_GetError());
     rsl=SDL_BlitSurface(img32, NULL, surface, NULL);
     pixels = (unsigned char *)surface->pixels;
     pixels += 4*(ofset_y*bgnd_x+ofset_x);
@@ -824,6 +840,8 @@ Howvwer, for some displays eg QVSS, a fade is not required so this function is d
 emeulates a standard RGB bitmap display in framebuffer mode.
 The nostore function can also be used for a storage scope display eg the Tektronix 611 XY display. (See pdp8_vc8.c).
 This module also contains an offset option to define a sub region of the window to refresh.
+
+Update 2023: This thread is now slaved to Mloop() where the display is actually updated and frame synced.
 */
 
 static int Refresh(void *info) {
@@ -835,7 +853,7 @@ static int Refresh(void *info) {
     unsigned char *buf=calloc(init_w*init_h, 4);
 
     while (window && vid_init != STOPPED) {
-        told=sim_os_msec();
+        told=SDL_GetTicks();
         tlast=told;
         lo = tekout?200:0;                                  // When in tek mode, fade to 200 rather than 0
         if (vid_init == RUNNING) {				            // If halted ... freeze display and, display valid
@@ -872,12 +890,14 @@ static int Refresh(void *info) {
             }
         }
 
-        tnew = sim_os_msec();
-        tvl = 18 - tnew + told;				// Calculate delay required for a constant update time of 20mSec. 
+        tnew = SDL_GetTicks();
+        tvl = 20 - tnew + told;				// Calculate delay required for a constant update time of 20mSec. 
         if (tvl < 0)						// System not fast enough so just continue with no delay.
             tvl = 0;
-        SDL_Delay(tvl);                     // This delay is required here to allow SDL to update the window
-        dflag++;
+        //SDL_Delay(tvl);                   // This delay is required here to allow SDL to update the window
+        while (!dflag)                      // New code which now slaves refresh to Mloop which is frame synced.
+            SDL_Delay(1);
+        dflag = 0;
     }
     free(buf);
     return 0;							// The window has been closed by vid_close ... exit thread
@@ -915,26 +935,28 @@ static void vid_close_window(void)
 }
 
 static int MLoop() {
-    SDL_Event event;
-    int rel_x,rel_y;
+	SDL_Event event;
+	int rel_x, rel_y;
 
-    switch (vid_init) {
-        case STOPPED:
-            return 0;				// Wait until window has been initialised
-        case WINDOW_OK:
-            vid_create_window();	// Create window and begin receiving events
-            break;
-        case RUNNING:               // No action.
-            if (dflag) {
-                SDL_UpdateWindowSurface(window);
-                dflag = 0;
-            }
-            break;
-        case CLOSING:
-            return -1;				// Exit message loop and start shutdown
-        case CLOSED:
-            vid_close_window();		// Close window continue receiving events until SDL_Quit
-            break;
+	switch (vid_init) {
+	case STOPPED:
+		return 0;				// Wait until window has been initialised
+	case WINDOW_OK:
+		vid_create_window();	// Create window and begin receiving events
+		break;
+	case RUNNING:               // No action.
+		//SDL_UpdateWindowSurface(window); 
+		SDL_UpdateTexture(tex, NULL, surface->pixels, surface->pitch);
+		SDL_RenderClear(rend);
+		SDL_RenderCopy(rend, tex, NULL, NULL);
+		SDL_RenderPresent(rend);
+		dflag++;                        // Flag refresh cycle (of this thread).
+		break;
+	case CLOSING:
+		return -1;				// Exit message loop and start shutdown
+	case CLOSED:
+		vid_close_window();		// Close window continue receiving events until SDL_Quit
+		break;
     }
 
     rel_x = xmev->x_pos - lcurr_x;
