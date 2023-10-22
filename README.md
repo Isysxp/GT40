@@ -120,4 +120,18 @@ To this end, there are a number of options:
 2.	There is a new version of Spacewar available. Many thanks to Lars Brinkhoff for sorting this out.<br>
 	It can be found at: https://github.com/pdp11/mit-gt40-spacewar<br>
 	This also means that you can become a DOS-11 expert!
-	
+<br>
+	Update Oct 2023:<br>
+ <br>
+ 	This update is for evaluation purposes at the moment.<br> 1: recent 64 bit SDL2 libraries do not allow
+	UpdateWindowSurface off the SDL main thread. Mloop() and refresh() have been updated to correct this.
+	This does affect the screen refresh so any comments about display quality would be great.<br>
+	2: console command injection which is used for key strokes into the GT40 UI window has been updated
+	as the use of TIOCSTI is deprecated. The update is to the console KL11 handler in pdp11_stddev such that
+	a key event in the UI window is now injected into the KL11 (or remote) input stream. This is equivalent
+	to having an LK40 keyboard linked to the 11/05 console KL11. Now, you can have the UI in focus and type
+	into the screen. This still works in Windows. This update has been tested in Fedora 38 64 bit.
+	Other new distros should be OK.
+
+	Ian Schofield Oct 2023.
+
