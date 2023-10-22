@@ -133,5 +133,19 @@ To this end, there are a number of options:
 	into the screen. This still works in Windows. This update has been tested in Fedora 38 64 bit.
 	Other new distros should be OK.
 
-	Ian Schofield Oct 2023.
+	Ian Schofield Oct 2023.<br>
+ <br>
+ 	See above. This update to sim_video_gt40.c is significant. The display logic has been changed to take
+	advantage of a number of useful features of SDL2. However, this also gets into game territory where
+	anything less that 180 FPS means you have no chance! The display update is now frame synced and called
+	from Mloop(). Now, Refresh() is slaved to Mloop() rather then the other way around. This considerably
+	reduces display flicker and shading. This has been tested in Fedora 38 64bit and Windows. The app
+	will also work on a Pi. I have tried Bookworm 64bit on a Pi4 to do this. But, the app really hammers the CPU
+	so I cannot recommend this device.
+	(For the Pi app to work, you need: export SDL_VIDEODRIVER=x11 and export SDL_VIDEO_X11_XRANDR=0).
+	As this update may cause some problems, I have left a previous copy of sim_video_gt40.c in the repo.
+
+	Ian Schofield Oct 2023.<br>
+ 
+
 
