@@ -136,6 +136,7 @@ To this end, there are a number of options:
 <br>
 	Ian Schofield Oct 2023.
 <br>
+<br>
  	See above. This update to sim_video_gt40.c is significant. The display logic has been changed to take
 	advantage of a number of useful features of SDL2. However, this also gets into game territory where
 	anything less that 180 FPS means you have no chance! The display update is now frame synced and called
@@ -148,6 +149,7 @@ To this end, there are a number of options:
 <br>
 <br>
 	Ian Schofield Oct 2023.
+<br>
 <br>
    	This build has some further updates to the display system. The Refresh() function is now called from Mloop()
   	which is synced to the monitor frame rate. Also, the original sync system in vt11.c has been disabled such
