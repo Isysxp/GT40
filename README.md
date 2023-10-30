@@ -146,6 +146,16 @@ To this end, there are a number of options:
 	As this update may cause some problems, I have left a previous copy of sim_video_gt40.c in the repo.
 
 	Ian Schofield Oct 2023.<br>
+ <br>
+   	This build has some further updates to the display system. The Refresh() function is now called from Mloop()
+  	which is synced to the monitor frame rate. Also, the original sync system in vt11.c has been disabled such
+  	that the VT11 hardware always runs as fast as possible. The effect of this is patricularly noticeable
+  	using the VT07 graphics app which uses a software character builder and is line synced. The line sync
+  	logic as above was always only an approximation to the true line frequency. Now that this is disabled,
+  	the VT07 display no longer flickers.
+  	As above, the app performance is still borderline on a Pi4. It may be that it is useable on a Pi5.
+<br>
+	Ian Schofield Nov 2023.<br>
  
 
 
