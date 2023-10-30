@@ -558,7 +558,7 @@ t_stat vid_create_window(void)
         SDL_WINDOWPOS_CENTERED,			// initial y position
         bgnd_x,                             // width, in pixels
         bgnd_y,                             // height, in pixels
-        SDL_WINDOW_SHOWN					// flags
+        SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL					// flags
         );
 
     // Check that the window was successfully created
