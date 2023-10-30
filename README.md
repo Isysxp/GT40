@@ -132,9 +132,11 @@ To this end, there are a number of options:
 	to having an LK40 keyboard linked to the 11/05 console KL11. Now, you can have the UI in focus and type
 	into the screen. This still works in Windows. This update has been tested in Fedora 38 64 bit.
 	Other new distros should be OK.
-
-	Ian Schofield Oct 2023.<br>
- <br>
+<br>
+<br>
+	Ian Schofield Oct 2023.
+<br>
+<br>
  	See above. This update to sim_video_gt40.c is significant. The display logic has been changed to take
 	advantage of a number of useful features of SDL2. However, this also gets into game territory where
 	anything less that 180 FPS means you have no chance! The display update is now frame synced and called
@@ -143,9 +145,22 @@ To this end, there are a number of options:
 	will also work on a Pi. I have tried Bookworm 64bit on a Pi4 to do this. But, the app really hammers the CPU
 	so I cannot recommend this device.
 	(For the Pi app to work, you need: export SDL_VIDEODRIVER=x11 and export SDL_VIDEO_X11_XRANDR=0).
-	As this update may cause some problems, I have left a previous copy of sim_video_gt40.c in the repo.
-
-	Ian Schofield Oct 2023.<br>
+	As this update may cause some problems, I have left a previous copy of sim_video_gt40.c in the repo
+<br>
+<br>
+	Ian Schofield Oct 2023.
+<br>
+<br>
+   	This build has some further updates to the display system. The Refresh() function is now called from Mloop()
+  	which is synced to the monitor frame rate. Also, the original sync system in vt11.c has been disabled such
+  	that the VT11 hardware always runs as fast as possible. The effect of this is patricularly noticeable
+  	using the VT07 graphics app which uses a software character builder and is line synced. The line sync
+  	logic as above was always only an approximation to the true line frequency. Now that this is disabled,
+  	the VT07 display no longer flickers.
+  	As above, the app performance is still borderline on a Pi4. It may be that it is useable on a Pi5.
+<br>
+<br>
+	Ian Schofield Nov 2023.<br>
  
 
 
