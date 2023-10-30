@@ -3255,6 +3255,7 @@ vt11_cycle(int us, int slowdown)
 
     msec = new_msec;
 
+/*  This code is now excluded as the system is already frame synced in Mloop()
     if ((sync_period || maint1 || !busy) && !maint2)
         goto age_ret;                   /* just age the display */
 

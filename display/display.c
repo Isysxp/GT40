@@ -130,6 +130,10 @@ static struct phosphor p40[] = {{0.8,0.98,0.98,0xb0b0ff}};
 	/* Only used with the VC8(e) display hardware. CO bit changes (masks) pxval in vid_setpixel */
 	
 static struct phosphor pred[] = { {0.0,0.9,0.9,0xffff00} };
+
+    /* P41 Orange long decay */
+static struct phosphor p41[] = { {0,0.98,0.98,0xffa500} };
+
 
 static struct display displays[] = {
    /*

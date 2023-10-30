@@ -558,7 +558,7 @@ t_stat vid_create_window(void)
         SDL_WINDOWPOS_CENTERED,			// initial y position
         bgnd_x,                             // width, in pixels
         bgnd_y,                             // height, in pixels
-        SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL					// flags
+        SDL_WINDOW_SHOWN					// flags
         );
 
     // Check that the window was successfully created
@@ -579,15 +579,18 @@ t_stat vid_create_window(void)
         fprintf(stderr, "Invalid pixel format.\n");
         exit(-1);
     }
+
     rend = SDL_GetRenderer(window);
     if (rend)
         SDL_DestroyRenderer(rend);
-    rend=SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    SDL_SetHint(SDL_HINT_RENDER_VSYNC,"1");
+    rend=SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (!rend)
         printf("%s\r\n",SDL_GetError());
     tex = SDL_CreateTextureFromSurface(rend, surface);
     if (!tex)
         printf("%s\r\n",SDL_GetError());
+
     rsl=SDL_BlitSurface(img32, NULL, surface, NULL);
     pixels = (unsigned char *)surface->pixels;
     pixels += 4*(ofset_y*bgnd_x+ofset_x);
@@ -595,7 +598,7 @@ t_stat vid_create_window(void)
     vid_erase_win();
     SDL_SetSurfaceBlendMode(img_led, SDL_BLENDMODE_BLEND);
     SDL_SetSurfaceBlendMode(img_led_off, SDL_BLENDMODE_BLEND);
-    SDL_CreateThread(Refresh,"Refresh",(void *)NULL);
+    //SDL_CreateThread(Refresh,"Refresh",(void *)NULL);
     if (!(init_flags & SIM_VID_INPUTCAPTURED))
         if (!(init_flags & SIM_OWN_CURSOR))
             SDL_ShowCursor(SDL_DISABLE);			        /* Make host OS cursor invisible in non-capture mode or */
@@ -850,9 +853,8 @@ static int Refresh(void *info) {
     Uint8 b;
     double *d;
     static int led_cntr,tlast;
-    unsigned char *buf=calloc(init_w*init_h, 4);
 
-    while (window && vid_init != STOPPED) {
+    if (window && vid_init != STOPPED) {
         told=SDL_GetTicks();
         tlast=told;
         lo = tekout?200:0;                                  // When in tek mode, fade to 200 rather than 0
@@ -863,7 +865,7 @@ static int Refresh(void *info) {
                     for (i = 0;i < init_w; i++, p++)
                         for (j = 0,d = colmap;j < 3;j++, p++, d++)
                             if (*p > lo)
-                                *p = (unsigned char)(*p * (*d) - 1);	// Decay pixels>lo only
+                                *p = (unsigned char)((double)*p * (*d));	// Decay pixels>lo only
         }
 
 
@@ -899,7 +901,6 @@ static int Refresh(void *info) {
             SDL_Delay(1);
         dflag = 0;
     }
-    free(buf);
     return 0;							// The window has been closed by vid_close ... exit thread
 }
 
@@ -947,10 +948,12 @@ static int MLoop() {
 	case RUNNING:               // No action.
 		//SDL_UpdateWindowSurface(window); 
 		SDL_UpdateTexture(tex, NULL, surface->pixels, surface->pitch);
-		SDL_RenderClear(rend);
+		//SDL_RenderClear(rend);
 		SDL_RenderCopy(rend, tex, NULL, NULL);
 		SDL_RenderPresent(rend);
 		dflag++;                        // Flag refresh cycle (of this thread).
+        Refresh(NULL);
+        fcntr++;                        // Allow VT11 to proceed from wait for sync
 		break;
 	case CLOSING:
 		return -1;				// Exit message loop and start shutdown
@@ -1183,15 +1186,18 @@ function. At present, level and color are ignored.
 */
 
 t_stat vid_setpixel(int ix,int iy,int level,int color) {
-    Uint32 *p;
+    Uint32 *p,pmsk,i;
+    unsigned char* pz,*pv=(unsigned char *)&pxval;
 
+    pmsk = (alias << 16) | (alias << 8) | alias;
     if (vid_init == RUNNING) {
-        p=(Uint32 *)(pixels + (iy * surface->pitch) + (ix * sizeof(Uint32)));
+        p = (Uint32 *)(pixels + (iy * surface->pitch) + (ix * sizeof(Uint32)));
+        pz = (pixels + (iy * surface->pitch) + (ix * sizeof(Uint32)));
         if (alias)
-            *p = (alias << 8) & 0xff00;      // Level is 0-255 of green only
+            for (i = 0; i < 3; i++, pz++ , pv++)
+                *pz = (alias * *pv) >> 8;
         else
-            *p = ((128 << 8) + (level << 12)) & pxval;     // Level is 0-7;
-//            *p = pxval;
+            *p = pxval;
     }
     return SCPE_OK;
 }
