@@ -568,7 +568,7 @@ t_stat vid_create_window(void)
         exit(-1);
     }    
     img32 = SDL_ConvertSurfaceFormat(img,SDL_PIXELFORMAT_ARGB8888,0);
-    surface = SDL_GetWindowSurface(window);
+    surface = SDL_CreateRGBSurfaceWithFormat(0, bgnd_x, bgnd_y, 32, SDL_PIXELFORMAT_RGB888);
     /* Check the bitdepth of the surface */
     if(surface->format->BitsPerPixel != 32){
         fprintf(stderr, "Not an 32-bit SDL surface.\n");
