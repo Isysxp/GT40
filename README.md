@@ -161,6 +161,13 @@ To this end, there are a number of options:
 <br>
 <br>
 	Ian Schofield Nov 2023.<br>
+ <br>
+ <br>
+ 	Yet another minor change to the display system so that the app works on a Mac. This was tested in a VM
+	running Sonoma. This was rather hard work as SDL works slighly differently.
+<br>
+<br>
+	Ian Schofield Nov 2023<br>
  
 
 
