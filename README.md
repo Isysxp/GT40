@@ -168,6 +168,17 @@ To this end, there are a number of options:
 <br>
 <br>
 	Ian Schofield Nov 2023<br>
+ <br>
+ <br>
+ 	Please note that if you wish to try the GTLOAD option to connect to ITS, use the vt07 script
+	and change lines 17 and 18 to 'boot rom0'. Using this option can cause a VT11 trap. If this
+	occurs, change line 65 in PDP11/pdp_vt.c to '#define VT11_DELAY 20'. This trap  occurs because
+	the bootvt programme cannot keep up with the VT11 instruction fetches.
+	In addition, I have included a script to run the VT11 embedded Lunar Lander. 'do lunar'.
+<br>
+<br>
+	Ian Schofield Mar 2024<br>
+ 
  
 
 
