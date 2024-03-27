@@ -624,7 +624,7 @@ t_stat vid_create_window(void)
     pdl_dst.w=bset1_down->w;
     pdl_dst.h=bset1_down->h;
     pdl_dst.y=BSet2_Y;
-    msk=bset2_state=SR=0166000;                                         /* Default SR setting */
+    msk=bset2_state=SR;                                         /* Default SR setting */
     for (i=0;i<16;i++,j>>=1,msk<<=1) {
         pdl_dst.x=BSet2_X+i*pdl_dst.w;
         if (msk & 0100000)                                        /* Default SR pattern */

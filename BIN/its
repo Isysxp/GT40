@@ -1,0 +1,34 @@
+set cpu 11/05
+set lpt disabled
+set dz disabled
+set rk disabled
+set rl disabled
+set hk disabled
+set rx disabled
+set rp disabled
+set rq disabled
+set tm disabled
+set tq disabled
+;set cpu 16k
+set tti 8b
+set dli enabled
+set dlo enabled
+set dli lines=1
+set dli address=17775610
+set dlo0 8b
+at -u dli 10005,connect=%1:10019
+set vt alias=on
+set vt crt=vr14
+set vt scale=2
+set vt address=17772000
+set vt vec=320
+set vt keyboard=nospacewar
+set vt enable
+dep sr 0
+set rom enabled
+set rom0 address=17766000
+at rom0 bootvt.img
+load vt08.bin
+;load ccons.img
+run 1000
+;boot rom0

@@ -1,0 +1,8 @@
+; Set CPU to a Unibus system type
+set cpu 11/05
+set dz disable
+set vt crt=vr14
+set vt scale=2
+set vt alias=on
+set vt enable
+boot vt
