@@ -170,6 +170,8 @@ To this end, there are a number of options:
 	Ian Schofield Nov 2023<br>
  <br>
  <br>
+ 	This update adds some more versions of spacewar and a way of presetting the SR from SIMH. To do this
+	use 'DEP SR xxxxx' before the 'SET VT ENA' command.<br>
  	Please note that if you wish to try the GTLOAD option to connect to ITS, use the vt07 script
 	and change lines 17 and 18 to 'boot rom0'. Using this option can cause a VT11 trap. If this
 	occurs, change line 65 in PDP11/pdp_vt.c to '#define VT11_DELAY 20'. This trap  occurs because
