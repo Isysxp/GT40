@@ -19,6 +19,6 @@ att dli line=0,connect=%1
 set rom0 address=17766000
 at rom0 bootvt.img
 load vt07.bin
-;boot rl0
+boot rl0
 ;boot rom0
 ;run 200
