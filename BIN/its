@@ -28,7 +28,7 @@ dep sr 0
 set rom enabled
 set rom0 address=17766000
 at rom0 bootvt.img
-load vt08.bin
+load vt07.bin
 ;load ccons.img
 run 1000
 ;boot rom0
