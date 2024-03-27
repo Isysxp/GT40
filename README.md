@@ -178,7 +178,7 @@ To this end, there are a number of options:
 	I have added two versions of Spacewar.
 	Run with 'do spacewar'. This is from Lars Brinkhoff and I am not sure how it works.
 	Run with 'do spwar'. I do not know where this is from but it uses the SR to control the ships. (Really hard!).<br>
-   	Finally as the amazing PiDP10 has arrived, I have added a specific ITS script. Use as 'do its <DNS name of your PiDP10>.
+   	Finally as the amazing PiDP10 has arrived, I have added a specific ITS script. Use as 'do its (DNS name of your PiDP10).
   	This will attach the GT40 to port 10019 and allow it to be used as a LLOGO display slave.
 <br>
 <br>
