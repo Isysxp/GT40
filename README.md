@@ -170,14 +170,18 @@ To this end, there are a number of options:
 	Ian Schofield Nov 2023<br>
  <br>
  <br>
+ 	This update adds some more versions of spacewar and a way of presetting the SR from SIMH. To do this
+	use 'DEP SR xxxxx' before the 'SET VT ENA' command.<br>
  	Please note that if you wish to try the GTLOAD option to connect to ITS, use the vt07 script
 	and change lines 17 and 18 to 'boot rom0'. Using this option can cause a VT11 trap. If this
 	occurs, change line 65 in PDP11/pdp_vt.c to '#define VT11_DELAY 20'. This trap  occurs because
 	the bootvt programme cannot keep up with the VT11 instruction fetches.
 	In addition, I have included a script to run the VT11 embedded Lunar Lander. 'do lunar'.
-	Finally, I have added two versions of Spacewar.
+	I have added two versions of Spacewar.
 	Run with 'do spacewar'. This is from Lars Brinkhoff and I am not sure how it works.
-	Run with 'do spwar'. I do not know where this is from but it uses the SR to control the ships. (Really hard!).
+	Run with 'do spwar'. I do not know where this is from but it uses the SR to control the ships. (Really hard!).<br>
+   	Finally as the amazing PiDP10 has arrived, I have added a specific ITS script. Use as 'do its (DNS name of your PiDP10)'.
+  	This will attach the GT40 to port 10019 and allow it to be used as a LLOGO display slave.
 <br>
 <br>
 	Ian Schofield Mar 2024<br>
