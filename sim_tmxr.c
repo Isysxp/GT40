@@ -1895,7 +1895,10 @@ for (i = 0; i < mp->lines; i++) {                       /* loop thru lines */
                         (tmp == TN_COMPRT) || 
                         (tmp == TN_KERMIT)) {
                         /* Reject (DONT) these 'uninteresting' options only one time to avoid loops */
-                            if (lp->telnet_sent_opts)
+                        if (!lp->telnet_sent_opts) {
+                            lp->telnet_sent_opts = (uint8*)realloc(lp->telnet_sent_opts, 256);
+                            memset(lp->telnet_sent_opts, 0, 256);
+                        }
                         if (0 == (lp->telnet_sent_opts[tmp] & TNOS_DONT)) {
                             lp->notelnet = TRUE;                /* Temporarily disable so */
                             tmxr_putc_ln (lp, TN_IAC);          /* IAC gets injected bare */
