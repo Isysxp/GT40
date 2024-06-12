@@ -650,7 +650,10 @@ static int32 clip_x1, clip_y1, clip_z1; /* CRT coords for exit point */
 static void lineTwoStep(int32, int32, int32, int32, int32, int32);
 static void xlineTwoStep(int32, int32, int32, int32, int32, int32);
                                         /* forward reference */
-
+
+/* Extern dflag in sim_video_gt40.c set in sync with frame updates */
+extern int dflag;
+
 /*
  * calls to read/write VT11/VS60 CSRs
  *
@@ -3249,13 +3252,12 @@ vt11_cycle(int us, int slowdown)
     if (msec / BLINK_COUNT != new_msec / BLINK_COUNT)
         blink_off = !blink_off;
 
-    /* if awaiting sync, look for next frame start */
-    if (sync_period && (msec / sync_period != new_msec / sync_period))
-        sync_period = 0;                /* start next frame */
+    if (sync_period && (dflag == 0))      /* New sync code see mloop()*/
+        goto age_ret;
+    dflag = sync_period = 0;
 
     msec = new_msec;
-
-/*  This code is now excluded as the system is already frame synced in Mloop()
+/*
     if ((sync_period || maint1 || !busy) && !maint2)
         goto age_ret;                   /* just age the display */
 
@@ -3325,8 +3327,7 @@ vt11_cycle(int us, int slowdown)
         DPC += 2;
         if (time_out)
             goto bus_timeout;
-        DEBUGF("0%06o: 0%06o\r\n",
-               (unsigned)(DPC - 2 + reloc) & 0777777, (unsigned)inst);
+        //printf("0%06o: 0%06o\r\n",(unsigned)(DPC - 2 + reloc) & 0777777, (unsigned)inst);
         if (finish_jmpa)
             goto jmpa;
         if (finish_jsra)

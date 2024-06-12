@@ -865,7 +865,7 @@ static int Refresh(void *info) {
                     for (i = 0;i < init_w; i++, p++)
                         for (j = 0,d = colmap;j < 3;j++, p++, d++)
                             if (*p > lo)
-                                *p = (unsigned char)((double)*p * (*d));	// Decay pixels>lo only
+                                *p = (unsigned char)floor((double)*p * (*d));	// Decay pixels>lo only
         }
 
 
@@ -896,10 +896,6 @@ static int Refresh(void *info) {
         tvl = 20 - tnew + told;				// Calculate delay required for a constant update time of 20mSec. 
         if (tvl < 0)						// System not fast enough so just continue with no delay.
             tvl = 0;
-        //SDL_Delay(tvl);                   // This delay is required here to allow SDL to update the window
-        while (!dflag)                      // New code which now slaves refresh to Mloop which is frame synced.
-            SDL_Delay(1);
-        dflag = 0;
     }
     return 0;							// The window has been closed by vid_close ... exit thread
 }
