@@ -186,6 +186,17 @@ To this end, there are a number of options:
 <br>
 <br>
 	Ian Schofield Mar 2024<br>
+ <br>
+ 	This patch is to synchronise the screen update from the SDL2 code in MLoop() (sim_video_gt40.c)<br>
+	In addition, this corrects a crash that can occur using the bootvt.img rom bootstrap.<br>
+ 	To try/use this boostrap code see the its script. The boot image contains code that may
+	be used to load binaries from ITS using the :GTLOAD command.<br>
+ 	However, I would note that the Lunar Lander ITS binary never gets past the start screen.<br>
+  	To correct this, once the start screen is on the display, stope simh from the GT40 console (^e)<br>
+   	then type the following into simh:  d psw 0 and then c. After a few seconds Lunar Lander will start.<br>
+    <br>
+    	Ian Schofield Jun 2024<br>
+     
  
  
 
